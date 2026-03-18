@@ -241,6 +241,18 @@ print(response)
 
 ## Training Pipeline
 
+### Development Workflow
+
+**Local Testing (RTX 3050 8GB):**
+- All pipeline validation with smaller models (Qwen3-0.6B to Qwen2.5-3B)
+- Hyperparameter tuning and ablation studies
+- Evaluation suite testing
+- Pass@1 protection validation
+
+**Production Training (H100 80GB):**
+- Final Qwen3-32B training after local validation
+- Full-scale SFT and DPO on target model
+
 ### Implemented Components
 
 1. **Dataset Generation** ✓
@@ -259,13 +271,28 @@ print(response)
    - Special Metrics for math/code (Tier 2, monitoring only)
    - DPO audit for prompt interference
 
-### Training Phases (Planned)
+### Training Phases
 
-1. **Phase 1 - SFT**: Supervised Fine-Tuning (~4 hours on H100)
-2. **Phase 2 - DPO**: Direct Preference Optimization (~6 hours)
-3. **Phase 3 - Calibration**: Temperature scaling for confidence
-4. **Phase 4 - Evaluation**: Full benchmark suite
-5. **Phase 5 - Red Teaming**: Adversarial testing
+#### Local Development (RTX 3050 8GB)
+
+| Phase | Model | Duration | Purpose |
+|-------|-------|----------|---------|
+| **Phase 0** | Qwen3-0.6B | < 1 day | Pipeline validation |
+| **Phase 1** | Qwen3-0.6B | 1-2 days | Script development |
+| **Phase 2** | Qwen2.5-3B | 2-3 days | SFT testing & tuning |
+| **Phase 3** | Qwen2.5-3B | 2-3 days | DPO testing & tuning |
+| **Phase 4** | Qwen2.5-3B | 1 day | Calibration testing |
+| **Phase 5** | Qwen2.5-3B | 1-2 days | Evaluation validation |
+| **Phase 6** | Qwen2.5-3B | 1-2 days | Red team testing |
+
+#### Production Training (H100 80GB)
+
+| Phase | Model | Duration | Purpose |
+|-------|-------|----------|---------|
+| **Phase 7-A** | Qwen3-32B | ~4 hours | Final SFT |
+| **Phase 7-B** | Qwen3-32B | ~6 hours | Final DPO |
+| **Phase 7-C** | Qwen3-32B | ~2 hours | Final calibration |
+| **Phase 7-D** | Qwen3-32B | ~4 hours | Full evaluation |
 
 ## Evaluation Metrics
 

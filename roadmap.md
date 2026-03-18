@@ -1,10 +1,32 @@
 # MASTERPLAN – THE RELIABLE 32B
 
-**Version 4**
+**Version 5**
 
 **Stand:** 18. März 2026
 
-**Status:** Phase 0-1 abgeschlossen · Phase 2 bereit für Start
+**Status:** Phase 0-1 abgeschlossen · Phase 2-6 auf RTX 3050 (8GB) · Phase 7 auf H100
+
+---
+
+## Entwicklungs-Workflow
+
+**Alle Tests und Entwicklung laufen lokal auf RTX 3050 (8GB VRAM).**
+
+Erst das validierte Endprodukt wird auf der H100-Infrastruktur trainiert.
+
+### Lokale Entwicklung (RTX 3050 8GB)
+
+- Pipeline-Validierung mit kleineren Modellen (0.6B–3B)
+- Hyperparameter-Tuning
+- Evaluations-Suite testen
+- Pass@1 Protection validieren
+- Alle Scripts und Komponenten entwickeln
+
+### Produktionstraining (H100 80GB)
+
+- Finales Qwen3-32B Training nach lokaler Validierung
+- Full-Scale SFT und DPO auf Zielmodell
+- Letzte Kalibrierung und Evaluation
 
 ---
 
@@ -181,26 +203,51 @@ Epistemischer Entscheidungsprozess (immer intern):
 
 ## 7. TRAININGSPHASEN
 
-### Phase 1 – SFT ✅ ABGESCHLOSSEN
+### Entwicklungs-Strategie
 
-**Status:** Script implementiert, bereit für Remote-Training
+**Phase 0-6: Lokale Entwicklung (RTX 3050 8GB)**
+
+Alle Scripts und die komplette Pipeline werden mit kleineren Modellen entwickelt und validiert:
+
+| Phase | Modell | VRAM | Zweck |
+|-------|--------|------|-------|
+| Phase 0-1 | Qwen3-0.6B | ~1.5 GB | Pipeline, Scripts |
+| Phase 2-3 | Qwen2.5-3B | ~6 GB | SFT/DPO Testing |
+| Phase 4-6 | Qwen2.5-3B | ~6 GB | Eval, Calibration |
+
+**Phase 7: Produktion (H100 80GB)**
+
+Erst nach vollständiger lokaler Validierung:
+
+| Phase | Modell | VRAM | Dauer | Zweck |
+|-------|--------|------|-------|-------|
+| 7-A | Qwen3-32B | ~65 GB | ~4h | Final SFT |
+| 7-B | Qwen3-32B | ~65 GB | ~6h | Final DPO |
+| 7-C | Qwen3-32B | ~65 GB | ~2h | Calibration |
+| 7-D | Qwen3-32B | ~65 GB | ~4h | Evaluation |
+
+### Phase 1 – SFT ✅ ABGESCHLOSSEN (RTX 3050)
+
+**Status:** Script implementiert, auf RTX 3050 getestet
 
 **Ziel:** Modusverhalten & Routing stabilisieren
 
 - 80k Samples, 3 Epochen
-- Dauer: ~4 Stunden auf H100
+- Dauer: ~4 Stunden auf H100 (Phase 7), ~6-8h auf RTX 3050 (3B Modell)
 - Script: `src/diogenes/train_sft.py`
+- **Getestet mit:** Qwen3-0.6B und Qwen2.5-3B-Instruct
 
-### Phase 2 – DPO ✅ IMPLEMENTIERT
+### Phase 2 – DPO ✅ IMPLEMENTIERT (RTX 3050)
 
-**Status:** Script implementiert, wartet auf SFT-Checkpoint
+**Status:** Script implementiert, Testing auf RTX 3050
 
 **Ziel:** Halluzinationen bestrafen, ehrliche Antworten belohnen
 
 - Ranking: Gold > Acceptable > Weak > Hallucination
 - 60k Paare
-- Dauer: ~6 Stunden
+- Dauer: ~6 Stunden auf H100 (Phase 7), ~8-10h auf RTX 3050 (3B Modell)
 - Script: `src/diogenes/train_dpo.py`
+- **Getestet mit:** Qwen3-0.6B und Qwen2.5-3B-Instruct
 
 ---
 
