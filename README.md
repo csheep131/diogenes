@@ -14,6 +14,85 @@ Diogenes focuses on epistemic correctness rather than traditional LLM benchmarks
 
 The model is designed for deployment in critical domains (IT, manufacturing, medicine, law, finance).
 
+---
+
+## What Makes Diogenes Training Different
+
+Most LLM fine-tuning projects optimize for **helpfulness** and **engagement**. Diogenes optimizes for **epistemic honesty** — the model learns to recognize when it *doesn't* know something.
+
+### Traditional RLHF vs. Diogenes Approach
+
+| Aspect | Traditional RLHF | Diogenes Training |
+|--------|-----------------|-------------------|
+| **Primary Goal** | Helpful, engaging responses | Epistemically correct responses |
+| **"I don't know"** | Penalized (seen as unhelpful) | Rewarded (honest acknowledgment) |
+| **Hallucinations** | Often rewarded if plausible | Explicitly penalized |
+| **Confidence** | Always high (user preference) | Calibrated to actual knowledge |
+| **Training Signal** | Human preference (what sounds good) | Epistemic correctness (what is knowable) |
+
+### Key Differentiators
+
+#### 1. **Epistemic Mode Training**
+Unlike standard models that always attempt an answer, Diogenes learns 7 distinct response modes:
+- `ABSTAIN` — Honest knowledge gap acknowledgment
+- `CAUTIOUS_LIMIT` — Answer with explicit limitations
+- `REJECT_PREMISE` — Correcting false premises instead of answering them
+- `REQUEST_TOOL` — Recognizing when external tools/data are needed
+
+Most models are trained to *always answer*. Diogenes learns *when not to answer*.
+
+#### 2. **Hallucination-First DPO**
+Standard DPO optimizes for human preference rankings. Our DPO training:
+- Prioritizes **hallucination reduction** as the primary signal
+- Uses a custom **Hallucination Penalty** in the loss function
+- Ranks responses: `Gold > Acceptable > Weak > Hallucination`
+- Explicitly trains on **false premise detection** (7 epistemic error classes)
+
+#### 3. **Confidence Calibration as Core Objective**
+Traditional models output confidence scores that are poorly calibrated. Diogenes:
+- Trains with explicit `confidence_target` labels in the dataset
+- Uses **Expected Calibration Error (ECE)** as a primary metric
+- Includes a dedicated **Phase 3 - Calibration** with temperature scaling
+- Targets 40% ECE reduction compared to base model
+
+#### 4. **Knowledge Boundary Datasets**
+Instead of generic instruction data, we generate:
+- **80k SFT samples** covering 7 epistemic error classes
+- **60k DPO preference pairs** focused on uncertainty scenarios
+- Samples tagged with `risk_level`, `time_sensitive`, `needs_tool`
+- Explicit **reasoning traces** for epistemic decision-making
+
+#### 5. **Domain-Specific Reliability**
+While general models optimize for broad capabilities, Diogenes:
+- Targets critical domains: **medicine, law, finance, manufacturing, IT**
+- Prioritizes **safety over engagement** in high-risk scenarios
+- Includes **Red Teaming (Phase 5)** specifically for hallucination attacks
+
+### Training Philosophy
+
+```
+Traditional Training:
+  User asks → Model answers (always confident, always helpful)
+  
+Diogenes Training:
+  User asks → Model evaluates:
+    ├─ Do I know this? → Answer with appropriate confidence
+    ├─ Is this knowable? → Acknowledge limitations
+    ├─ Is the question flawed? → Reject false premises
+    ├─ Do I need tools? → Request external data
+    └─ Am I uncertain? → Express probabilistic reasoning
+```
+
+### Why This Matters
+
+In critical domains, a **confident wrong answer** is worse than **no answer**:
+- **Medical advice**: Hallucinated drug interactions can harm patients
+- **Legal guidance**: Incorrect citations can damage cases
+- **Financial advice**: Fabricated regulations can cause losses
+- **Manufacturing**: Wrong specifications can cause failures
+
+Diogenes is built for scenarios where **being reliably uncertain** is more valuable than **being confidently wrong**.
+
 ## Epistemic Modes
 
 The model decides between seven response modes for each query:
