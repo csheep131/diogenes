@@ -24,18 +24,18 @@
 ### 2. Infrastruktur ✅
 - [x] GPU-Zugriff verifiziert (NVIDIA RTX 3050 8 GB)
 - [x] CUDA-Treiber geprüft
-- [x] Python-Umgebung erstellt
+- [x] Python-Umgebung erstellt (.venv)
 
 ### 3. Framework Installation ✅
-- [x] PyTorch mit CUDA-Support
+- [x] PyTorch mit CUDA-Support (2.10.0+cu128)
 - [x] Transformers-Bibliothek
-- [x] Weitere Dependencies (PEFT, Accelerate, bitsandbytes)
-- [x] Optional: llama.cpp für GGUF-Quantisierung
+- [x] Weitere Dependencies (PEFT, Accelerate, bitsandbytes, datasets)
+- [x] TRL für DPO-Training
 
 ### 4. Base Model Laden (Klein für Testing) ✅
 - [x] **Qwen3-0.6B** (~1.2 GB) für Smoke Tests
 - [x] **Qwen3-1.7B** (~3.5 GB) für erste fachliche Tests
-- [x] **Qwen2.5-3B-Instruct** (~6 GB) für realistischere Tests
+- [x] **Qwen2.5-3B-Instruct** (~6 GB) für realistische Tests
 - [x] Modell-Integrität geprüft
 - [x] Inference-Test durchgeführt
 
@@ -45,13 +45,14 @@
 |--------|-------|------|------------|---------------|
 | Qwen3-0.6B | ~1.2 GB | ~1.5 GB | Pipeline-Validierung | FP16/INT8 |
 | Qwen3-1.7B | ~3.5 GB | ~4 GB | Erste fachliche Tests | FP16/INT8 |
-| Qwen2.5-3B-Instruct | ~6 GB | ~6 GB | Realistische Tests | Q4_K_M GGUF |
+| Qwen2.5-3B-Instruct | ~6 GB | ~6 GB | Realistische Tests | QLoRA 4-bit |
 
-**Hinweis:** Alle Modelle passen mit Quantisierung in 8GB VRAM.
+**Hinweis:** Alle Modelle passen mit QLoRA 4-bit in 8GB VRAM.
 
 ## Deliverables
 
 - [x] Funktionierende Entwicklungsumgebung auf RTX 3050
+- [x] Virtuelle Umgebung (.venv) mit allen Dependencies
 - [x] Kleines Test-Modell verfügbar
 - [x] Erste Inference möglich
 - [x] Pipeline validiert (Datenformat, Prompt-Template, Eval)
@@ -69,7 +70,7 @@
 
 1. **Pipeline-Validierung mit kleinen Modellen**
    - Qwen3-0.6B war ideal für schnelle Iterationen
-   - GGUF-Format ermöglicht effiziente Inferenz auf Consumer-Hardware
+   - QLoRA 4-bit ermöglicht effizientes Training auf Consumer-Hardware
    - Alle Scripts laufen stabil auf RTX 3050
 
 2. **Skript-Automatisierung**
@@ -88,8 +89,12 @@
    - Qwen2.5-3B-Instruct ist das größte Testmodell
 
 2. **CUDA-Version-Kompatibilität**
-   - PyTorch 2.1+ benötigt CUDA 12.1+
+   - PyTorch 2.10.0+ benötigt CUDA 12.8+
    - Lösung: Explizite Version-Pinning in requirements
+
+3. **Wandb Authentication**
+   - Wandb benötigt API-Key für Logging
+   - Lösung: `WANDB_DISABLED=true` für lokales Training
 
 ### Metriken aus Phase 0
 
@@ -98,7 +103,7 @@
 | Modell-Ladezeit (0.6B) | < 5 Sekunden |
 | First Token Latency | ~100ms |
 | VRAM-Nutzung (0.6B FP16) | ~1.5 GB |
-| VRAM-Nutzung (3B Q4_K_M) | ~6 GB |
+| VRAM-Nutzung (3B QLoRA 4-bit) | ~6 GB |
 | VRAM-Nutzung (3B FP16) | ~8 GB (Limit) |
 
 ## Entwicklungs-Workflow
@@ -127,6 +132,7 @@ Phase 7: Qwen3-32B (~65 GB VRAM mit QLoRA)
 - [x] `dataset_generator.py` für SFT (80k Samples) und DPO (60k Paare)
 - [x] `train_sft.py` mit LoRA/QLoRA Support
 - [x] `train_dpo.py` mit Hallucination Penalty
+- [x] `dpo_audit.py` für DPO-Audit vor Training
 - [x] Pass@1 Protection implementiert
 
 ➡️ **Phase 2**: SFT Testing auf RTX 3050 mit Qwen2.5-3B-Instruct
@@ -135,8 +141,12 @@ Phase 7: Qwen3-32B (~65 GB VRAM mit QLoRA)
 # SFT Training lokal starten
 python src/diogenes/train_sft.py \
   --model_name Qwen/Qwen2.5-3B-Instruct \
-  --config configs/config.yaml \
-  --output_dir models/sft_3b_test
+  --dataset_path datasets/sft_dataset.jsonl \
+  --output_dir models/sft_3b_test \
+  --num_train_epochs 3 \
+  --per_device_train_batch_size 1 \
+  --gradient_accumulation_steps 4 \
+  --learning_rate 2e-4
 ```
 
 ## Referenzen

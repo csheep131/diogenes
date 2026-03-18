@@ -19,6 +19,10 @@ Phase 0-6: RTX 3050 (8GB)
   └─ Qwen3-0.6B bis Qwen2.5-3B-Instruct
   └─ Pipeline, Scripts, Hyperparameter
   └─ Vollständige Validierung
+     ├── Phase 0-1: ✅ ABGESCHLOSSEN
+     ├── Phase 2: 🔄 LÄUFT (SFT Training)
+     ├── Phase 3: 📋 BEREIT (DPO vorbereitet)
+     └── Phase 4-6: ⏳ GEPLANT
 
 Phase 7: H100 (80GB)
   └─ Qwen3-32B
@@ -122,7 +126,7 @@ cd /opt/diogenes
 # SFT Training auf Qwen3-32B
 python src/diogenes/train_sft.py \
   --model_name Qwen/Qwen3-32B \
-  --dataset datasets/sft_80k.jsonl \
+  --dataset_path datasets/sft_80k.jsonl \
   --config configs/config_h100.yaml \
   --output_dir models/sft_32b_final \
   --num_train_epochs 3 \
@@ -153,7 +157,7 @@ training:
   per_device_train_batch_size: 4
   gradient_accumulation_steps: 4
   effective_batch_size: 16
-  
+
   # LoRA Konfiguration
   lora_r: 32
   lora_alpha: 64
@@ -166,13 +170,13 @@ training:
     - "gate_proj"
     - "up_proj"
     - "down_proj"
-  
+
   # Learning Rate
   learning_rate: 2.0e-4
   num_train_epochs: 3
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.03
-  
+
   # H100 Optimization
   fp16: true
   optim: "paged_adamw_8bit"
@@ -205,8 +209,8 @@ cd /opt/diogenes
 # DPO Training auf Qwen3-32B
 python src/diogenes/train_dpo.py \
   --model_name Qwen/Qwen3-32B \
-  --sft_checkpoint models/sft_32b_final \
-  --dataset datasets/dpo_60k.jsonl \
+  --sft_model_path models/sft_32b_final \
+  --dataset_path datasets/dpo_60k.jsonl \
   --config configs/config_h100.yaml \
   --output_dir models/dpo_32b_final \
   --num_train_epochs 2 \
@@ -376,10 +380,10 @@ print(f"Response: {result.text}")
 
 | Phase | Hardware | Modell | Status | Deliverables |
 |-------|----------|--------|--------|--------------|
-| **Phase 0** | RTX 3050 | 0.6B-3B | ✅ | Infrastruktur |
-| **Phase 1** | RTX 3050 | 0.6B-3B | ✅ | Scripts, Datasets |
-| **Phase 2** | RTX 3050 | 3B | 🔄 | SFT Testing |
-| **Phase 3** | RTX 3050 | 3B | ⏳ | DPO Testing |
+| **Phase 0** | RTX 3050 | 0.6B-3B | ✅ | Infrastruktur, Dependencies |
+| **Phase 1** | RTX 3050 | 0.6B-3B | ✅ | Scripts, Datasets, Audit |
+| **Phase 2** | RTX 3050 | 3B | 🔄 | SFT Testing (LÄUFT) |
+| **Phase 3** | RTX 3050 | 3B | 📋 | DPO Testing (BEREIT) |
 | **Phase 4** | RTX 3050 | 3B | ⏳ | Calibration |
 | **Phase 5** | RTX 3050 | 3B | ⏳ | Evaluation |
 | **Phase 6** | RTX 3050 | 3B | ⏳ | Red Teaming |
@@ -402,4 +406,5 @@ Damit wird Qwen3-32B zum verlässlichsten 32B-Wissensassistenten für kritische 
 - `roadmap.md` – Strategische Roadmap
 - `docs/PASS1_GUARDRAILS.md` – Pass@1 Richtlinien
 - `docs/IMPLEMENTATION_SUMMARY.md` – Implementierungs-Übersicht
-- `docs/phase0_quickstart.md` – RTX 3050 Setup-Guide
+- `docs/phase3_dpo_ready.md` – Phase 3 Anleitung
+- `phasen/phase_0.md` bis `phasen/phase_6.md` – Lokale Phasen

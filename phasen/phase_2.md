@@ -2,11 +2,33 @@
 
 **Dauer:** Tag 3–5
 
-**Status:** 🔄 **IN PROGRESS**
+**Status:** 🔄 **LÄUFT** (seit 18. März 2026, 20:58)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
 **Testmodell:** Qwen2.5-3B-Instruct (~6 GB VRAM mit QLoRA)
+
+## Aktuelle Status
+
+### Training Fortschritt
+- **Start:** 18. März 2026, 20:58
+- **Status:** Aktiv (Prozess läuft im Hintergrund)
+- **Fortschritt:** ~1% (685/60000 Steps für 1 Epoch)
+- **Speed:** ~1.76s/Step
+- **Erwartete Dauer:** ~29-30 Stunden für 3 Epochen
+- **GPU-Auslastung:** 100%, ~65°C, 4.9 GB VRAM
+
+### Befehle zur Überwachung
+```bash
+# Training Fortschritt
+tail -f /tmp/sft_train.log
+
+# GPU Auslastung
+watch -n 2 nvidia-smi
+
+# Prozess prüfen
+ps aux | grep train_sft | grep -v grep
+```
 
 ## Ziele
 
@@ -23,7 +45,7 @@
 ```
 Qwen2.5-3B-Instruct (~6 GB VRAM)
     ↓
-SFT Training (3 Epochen, ~6-8h)
+SFT Training (3 Epochen, ~30h)
     ↓
 Checkpoint-Validierung
     ↓
@@ -42,26 +64,26 @@ Final Production Checkpoint
 
 ## Aufgaben
 
-### 1. Training vorbereiten
+### 1. Training vorbereiten ✅
 
-- [ ] SFT Dataset laden (~80.000 Samples)
-- [ ] Data Preprocessing & Tokenization
-- [ ] LoRA Adapter initialisieren (rank 32, alpha 64)
-- [ ] QLoRA 4-bit Quantisierung aktivieren
-- [ ] VRAM-Nutzung überwachen (< 8 GB)
+- [x] SFT Dataset laden (~80.000 Samples)
+- [x] Data Preprocessing & Tokenization
+- [x] LoRA Adapter initialisieren (rank 32, alpha 64)
+- [x] QLoRA 4-bit Quantisierung aktivieren
+- [x] VRAM-Nutzung überwachen (< 8 GB)
 
-### 2. Training konfigurieren
+### 2. Training konfigurieren ✅
 
-- [ ] Target Modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
-- [ ] Learning Rate: optimieren (empfohlen: 2e-4 bis 1e-3)
-- [ ] Batch Size: an RTX 3050 VRAM anpassen (2-4)
-- [ ] Gradient Accumulation: 8-16 Steps
-- [ ] 3 Epochen einstellen
-- [ ] Checkpoint-Intervalle setzen (jedes Epoch)
+- [x] Target Modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
+- [x] Learning Rate: 2e-4
+- [x] Batch Size: 1 (für 8GB VRAM)
+- [x] Gradient Accumulation: 4 Steps
+- [x] 3 Epochen eingestellt
+- [x] Checkpoint-Intervalle: Alle 5000 Steps
 
-### 3. Training durchführen
+### 3. Training durchführen 🔄
 
-- [ ] Start SFT Training auf RTX 3050 (`~6-8 Stunden`)
+- [x] Start SFT Training auf RTX 3050 (`~30 Stunden`)
 - [ ] Loss-Kurven monitoren
 - [ ] VRAM-Nutzung überwachen (< 8 GB)
 - [ ] Checkpoints speichern
@@ -101,42 +123,39 @@ Final Production Checkpoint
 
 ## Training auf RTX 3050 (8GB)
 
-### Vorbereitung
+### Vorbereitung ✅
 
 ```bash
-# 1. Dataset generieren
-python src/diogenes/dataset_generator.py \
-  --split sft \
-  --size 80000 \
-  --output datasets/sft_80k.jsonl
+# 1. Dataset generieren (bereits erledigt)
+ls -lh datasets/sft_dataset.jsonl
+# -rw-rw-r-- 1 schaf schaf 49M 18. Mär 19:15 datasets/sft_dataset.jsonl
 
-# 2. Modell herunterladen (falls nicht vorhanden)
-python scripts/download_model.py \
-  --model-name Qwen/Qwen2.5-3B-Instruct
+# 2. Modell herunterladen (bereits erledigt)
+# Qwen2.5-3B-Instruct ist im HuggingFace Cache
 ```
 
-### Training starten
+### Training gestartet ✅
 
 ```bash
-# SFT Training auf RTX 3050
-python src/diogenes/train_sft.py \
+# SFT Training auf RTX 3050 (läuft im Hintergrund)
+cd /home/schaf/projects/diogenes
+source .venv/bin/activate
+export WANDB_DISABLED=true
+
+nohup python3 src/diogenes/train_sft.py \
   --model_name Qwen/Qwen2.5-3B-Instruct \
-  --dataset datasets/sft_80k.jsonl \
-  --config configs/config.yaml \
+  --dataset_path datasets/sft_dataset.jsonl \
   --output_dir models/sft_3b_test \
   --num_train_epochs 3 \
-  --per_device_train_batch_size 2 \
-  --gradient_accumulation_steps 8 \
+  --per_device_train_batch_size 1 \
+  --gradient_accumulation_steps 4 \
   --learning_rate 2e-4 \
-  --lora_r 32 \
-  --lora_alpha 64 \
-  --load_in_4bit true \
-  --logging_steps 10 \
-  --save_strategy epoch \
-  --save_total_limit 3
+  --logging_steps 100 \
+  --save_steps 5000 \
+  > /tmp/sft_train.log 2>&1 &
 ```
 
-### Konfiguration (configs/config.yaml)
+### Konfiguration (angepasst für RTX 3050)
 
 ```yaml
 # RTX 3050 (8GB) Optimierung
@@ -148,10 +167,10 @@ model:
 
 training:
   # Batch Size für 8GB VRAM
-  per_device_train_batch_size: 2
-  gradient_accumulation_steps: 8
-  effective_batch_size: 16
-  
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  effective_batch_size: 4
+
   # LoRA Konfiguration
   lora_r: 32
   lora_alpha: 64
@@ -164,13 +183,13 @@ training:
     - "gate_proj"
     - "up_proj"
     - "down_proj"
-  
+
   # Learning Rate
   learning_rate: 2.0e-4
   num_train_epochs: 3
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.03
-  
+
   # Memory Optimization
   fp16: true
   optim: "paged_adamw_8bit"
@@ -190,15 +209,19 @@ training:
 | Activations | ~2 GB |
 | **Gesamt** | **~7.5 GB** |
 
+### Aktuelle VRAM-Nutzung
+- **Gemessen:** 4.9 GB (läuft stabil)
+- **Reserve:** ~3 GB für Display/System
+
 ### Bei VRAM-Problemen
 
 ```bash
-# Option 1: Batch Size reduzieren
+# Option 1: Gradient Accumulation erhöhen, Batch Size reduzieren
 --per_device_train_batch_size 1
---gradient_accumulation_steps 16
+--gradient_accumulation_steps 8
 
 # Option 2: Gradient Checkpointing aktivieren
---gradient_checkpointing true
+# (bereits aktiviert im Script)
 
 # Option 3: Kleineres Modell verwenden
 --model_name Qwen/Qwen3-1.7B
@@ -213,33 +236,33 @@ from diogenes import Pass1RegressionTracker, compute_core_reliability_metrics
 
 tracker = Pass1RegressionTracker(checkpoint_dir="./models/sft_3b_test")
 
-# Nach jedem Epoch
+# Nach jedem Epoch evaluieren
 for epoch in range(3):
     # Evaluate checkpoint
     core_metrics = compute_core_reliability_metrics(
         model_path=f"./models/sft_3b_test/checkpoint_epoch_{epoch}",
         eval_dataset="datasets/eval_holdout.jsonl",
     )
-    
+
     # Pass@k für Monitoring (Math/Code nur)
     pass_at_k = evaluate_pass_at_k(
         model_path=f"./models/sft_3b_test/checkpoint_epoch_{epoch}",
         math_dataset="datasets/math_eval.jsonl",
         k_values=[1, 3, 5, 10],
     )
-    
+
     # Regression prüfen
     result = tracker.record_checkpoint(
         checkpoint_name=f"epoch_{epoch}",
         core_metrics=core_metrics,
         pass_at_k_math=pass_at_k,
     )
-    
+
     print(f"Epoch {epoch}:")
     print(f"  Pass@1: {core_metrics.pass_at_1:.4f}")
     print(f"  ECE: {core_metrics.expected_calibration_error:.4f}")
     print(f"  Should promote: {result.should_promote}")
-    
+
     if not result.should_promote:
         print(f"  ⚠️  Regression detected: {result.regression_details}")
 ```
@@ -253,7 +276,7 @@ for epoch in range(3):
 ```bash
 # Lösung 1: Batch Size reduzieren
 --per_device_train_batch_size 1
---gradient_accumulation_steps 16
+--gradient_accumulation_steps 8
 
 # Lösung 2: Gradient Checkpointing
 --gradient_checkpointing true
@@ -267,26 +290,37 @@ python src/diogenes/train_sft.py \
 ### Langsames Training
 
 ```bash
-# Mixed Precision aktivieren
+# Mixed Precision aktivieren (bereits aktiv)
 --fp16 true
 
-# Paged Optimizer
+# Paged Optimizer (bereits aktiv)
 --optim "paged_adamw_8bit"
 
 # DataLoader Workers erhöhen
 --dataloader_num_workers 4
 ```
 
+### Training abgebrochen
+
+```bash
+# Von Checkpoint fortsetzen
+python src/diogenes/train_sft.py \
+  --resume_from_checkpoint models/sft_3b_test/checkpoint-1000 \
+  ...
+```
+
 ## Nächste Schritte
 
-➡️ **Phase 3**: DPO Testing auf RTX 3050
+➡️ **Phase 3**: DPO Testing auf RTX 3050 (vorbereitet)
 
-1. DPO-Dataset generieren (60k Paare)
-2. DPO-Audit durchführen
-3. DPO Training mit SFT-Checkpoint als Basis
-4. VRAM-Nutzung überwachen
+1. Warten bis SFT-Training abgeschlossen ist (~30h)
+2. DPO-Audit durchführen (bereits bestanden)
+3. DPO-Training starten mit:
+   ```bash
+   ./scripts/run_dpo_training.sh
+   ```
 
-➡️ **Phase 7**: Finales SFT Training auf H100 (nach lokaler Validierung)
+➡️ **Phase 7-A**: Finales SFT Training auf H100 (nach lokaler Validierung)
 
 ## Referenzen
 
@@ -294,3 +328,4 @@ python src/diogenes/train_sft.py \
 - `src/diogenes/pass1_protection.py` – Regression Detection
 - `docs/PASS1_GUARDRAILS.md` – Pass@1 Richtlinien
 - `docs/phase0_quickstart.md` – RTX 3050 Setup
+- `/tmp/sft_train.log` – Live Training Log

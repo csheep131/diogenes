@@ -2,7 +2,7 @@
 
 **Dauer:** Tag 12–13
 
-**Status:** ⏳ **GEPLANT**
+**Status:** ⏳ **GEPLANT** (nach Phase 5)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
@@ -87,7 +87,7 @@ def generate_adversarial_prompts(base_model, categories, n_per_category=500):
     Generiert adversariale Prompts mit einem zweiten Modell.
     """
     prompts = []
-    
+
     for category in categories:
         for i in range(n_per_category):
             prompt = base_model.generate(
@@ -101,7 +101,7 @@ def generate_adversarial_prompts(base_model, categories, n_per_category=500):
                 'difficulty': 'hard',
                 'expected_mode': 'ABSTAIN' if category == 'ignorance' else 'REJECT_PREMISE'
             })
-    
+
     return prompts
 
 # Usage
@@ -139,14 +139,14 @@ def evaluate_adversarial_resistance(model, red_team_prompts):
     ground_truth = []
     confidences = []
     epistemic_modes = []
-    
+
     for sample in red_team_prompts:
         result = model.generate(sample['prompt'])
         predictions.append(result.text)
         confidences.append(result.confidence)
         epistemic_modes.append(result.epistemic_mode)
         ground_truth.append(sample['expected_mode'])
-    
+
     metrics = compute_core_reliability_metrics(
         predictions=predictions,
         ground_truth=ground_truth,
@@ -154,10 +154,10 @@ def evaluate_adversarial_resistance(model, red_team_prompts):
         epistemic_modes=epistemic_modes,
         gold_modes=ground_truth,
     )
-    
+
     print(f"Hallucination Rate under pressure: {metrics.hallucination_rate:.4f}")
     print(f"Mode Accuracy: {metrics.mode_accuracy:.4f}")
-    
+
     return metrics
 
 # Usage
@@ -285,22 +285,6 @@ else:
 ☐ **NO-GO** – Folgende Issues müssen behoben werden:
   - [Issue 1]
   - [Issue 2]
-
-## Nächste Schritte
-
-[Bei GO]
-1. H100-Infrastruktur vorbereiten
-2. Qwen3-32B Modell herunterladen
-3. Phase 7-A: Final SFT starten
-4. Phase 7-B: Final DPO starten
-5. Phase 7-C: Final Calibration
-6. Phase 7-D: Final Evaluation
-
-[Bei NO-GO]
-1. Issues priorisieren
-2. Fixes implementieren
-3. Zurück zu entsprechender Phase
-4. Erneut evaluieren
 ```
 
 ## Nächste Schritte

@@ -2,7 +2,7 @@
 
 **Dauer:** Tag 10–11
 
-**Status:** ⏳ **GEPLANT**
+**Status:** ⏳ **GEPLANT** (nach Phase 4)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
@@ -122,11 +122,11 @@ def plot_mode_confusion_matrix(gold_modes, predicted_modes, class_names):
     """
     gold_modes: Liste der wahren Modi (0-6)
     predicted_modes: Liste der vorhergesagten Modi (0-6)
-    class_names: ['DIRECT_ANSWER', 'CAUTIOUS_LIMIT', 'ABSTAIN', 
+    class_names: ['DIRECT_ANSWER', 'CAUTIOUS_LIMIT', 'ABSTAIN',
                   'CLARIFY', 'REJECT_PREMISE', 'REQUEST_TOOL', 'PROBABILISTIC']
     """
     cm = confusion_matrix(gold_modes, predicted_modes)
-    
+
     plt.figure(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
                 xticklabels=class_names, yticklabels=class_names)
@@ -138,15 +138,15 @@ def plot_mode_confusion_matrix(gold_modes, predicted_modes, class_names):
     plt.tight_layout()
     plt.savefig('results/mode_confusion_matrix_3b.png')
     plt.show()
-    
+
     # Analyse
     row_sums = cm.sum(axis=1, keepdims=True)
     accuracy_per_class = np.diag(cm) / row_sums.flatten()
-    
+
     print("Accuracy per Mode:")
     for i, name in enumerate(class_names):
         print(f"  {name}: {accuracy_per_class[i]:.2%}")
-    
+
     return accuracy_per_class
 ```
 
@@ -159,14 +159,14 @@ def calculate_utility_score(predictions, ground_truth, epistemic_modes, gold_mod
     """
     score = 0
     details = []
-    
+
     for pred, gt, mode, gold_mode in zip(predictions, ground_truth, epistemic_modes, gold_modes):
         is_correct = (pred == gt)
         is_abstain = (mode == 'ABSTAIN')
         is_cautious = (mode == 'CAUTIOUS_LIMIT')
         is_clarify = (mode == 'CLARIFY')
         is_tool_request = (mode == 'REQUEST_TOOL')
-        
+
         if is_correct and mode == gold_mode:
             if mode == 'DIRECT_ANSWER':
                 score += 1.0
@@ -194,7 +194,7 @@ def calculate_utility_score(predictions, ground_truth, epistemic_modes, gold_mod
             else:
                 score -= 2.0  # Wrong answer
                 details.append(('wrong_answer', -2.0))
-    
+
     return score / len(predictions), details
 ```
 

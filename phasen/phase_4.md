@@ -2,7 +2,7 @@
 
 **Dauer:** Tag 9
 
-**Status:** ⏳ **GEPLANT**
+**Status:** ⏳ **GEPLANT** (nach Phase 3)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
@@ -81,19 +81,19 @@ class TemperatureScaling(nn.Module):
     def __init__(self, temperature=1.0):
         super().__init__()
         self.temperature = nn.Parameter(torch.tensor(temperature))
-    
+
     def forward(self, logits):
         return logits / self.temperature
 
 # Optimierung auf Holdout-Set
 def optimize_temperature(logits, labels):
     from scipy.optimize import minimize_scalar
-    
+
     def nll_loss(T):
         scaled_logits = logits / T
         probs = torch.softmax(scaled_logits, dim=-1)
         return -torch.log(probs[range(len(labels)), labels]).mean().item()
-    
+
     result = minimize_scalar(nll_loss, bounds=(0.1, 10.0), method='bounded')
     return result.x
 ```
@@ -104,55 +104,21 @@ def optimize_temperature(logits, labels):
 def calculate_confidence(logits, temperature=1.0):
     scaled_logits = logits / temperature
     probs = torch.softmax(scaled_logits, dim=-1)
-    
+
     # Token Entropy
     entropy = -torch.sum(probs * torch.log(probs + 1e-10), dim=-1)
-    
+
     # Logit Gap (Differenz zwischen Top-2)
     sorted_probs, _ = torch.sort(probs, descending=True)
     logit_gap = sorted_probs[:, 0] - sorted_probs[:, 1]
-    
+
     # Mode Probability
     mode_prob = sorted_probs[:, 0]
-    
+
     # Combined Confidence
     confidence = mode_prob * (1 - entropy / torch.log(torch.tensor(probs.shape[-1]))) * logit_gap
-    
+
     return confidence
-```
-
-### Reliability Diagram
-
-```python
-import matplotlib.pyplot as plt
-import numpy as np
-
-def plot_reliability_diagram(confidences, accuracies, n_bins=10):
-    bin_indices = np.argsort(confidences)
-    confidences = confidences[bin_indices]
-    accuracies = accuracies[bin_indices]
-    
-    bins = np.linspace(0, 1, n_bins + 1)
-    bin_centers = (bins[:-1] + bins[1:]) / 2
-    
-    bin_accuracies = []
-    bin_confidences = []
-    
-    for i in range(n_bins):
-        mask = (confidences >= bins[i]) & (confidences < bins[i + 1])
-        if mask.sum() > 0:
-            bin_accuracies.append(accuracies[mask].mean())
-            bin_confidences.append(confidences[mask].mean())
-    
-    plt.figure(figsize=(8, 8))
-    plt.plot([0, 1], [0, 1], 'k--', label='Perfect Calibration')
-    plt.bar(bin_centers, bin_accuracies, width=0.1, alpha=0.7, label='Model')
-    plt.xlabel('Confidence')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.title('Reliability Diagram')
-    plt.savefig('reliability_diagram.png')
-    plt.show()
 ```
 
 ## Calibration auf RTX 3050
