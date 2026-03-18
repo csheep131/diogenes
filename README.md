@@ -1,5 +1,7 @@
 # Diogenes – The Reliable 32B
 
+**Version 5** | **Stand:** 18. März 2026
+
 A specialized language model based on **Qwen3-32B**, optimized for **epistemic reliability**.
 
 ## Project Overview
@@ -18,7 +20,7 @@ The model is designed for deployment in critical domains (IT, manufacturing, med
 
 ## Current Status
 
-**As of March 18, 2026**
+**As of March 18, 2026, 21:00 UTC**
 
 ### Development Workflow
 
@@ -26,35 +28,43 @@ The model is designed for deployment in critical domains (IT, manufacturing, med
 
 ### ✅ Completed (Phase 0-1)
 
-- **Phase 0**: Infrastructure & Pipeline Validation ✅
+- **Phase 0**: Infrastructure & Pipeline Validation ✅ **ABGESCHLOSSEN**
   - Repository structure established
   - Development environment configured for RTX 3050 (8GB)
+  - Virtual environment (.venv) with all dependencies
   - Model download scripts (GGUF & Transformers formats)
   - Inference pipeline validated on consumer hardware
   - Epistemic mode detection tested
 
-- **Phase 1**: Dataset Generator & Training Scripts ✅
+- **Phase 1**: Dataset Generator & Training Scripts ✅ **ABGESCHLOSSEN**
   - `dataset_generator.py` – SFT (80k samples) and DPO (60k pairs) generation
   - `train_sft.py` – Supervised Fine-Tuning with LoRA/QLoRA support
   - `train_dpo.py` – Direct Preference Optimization with hallucination penalty
+  - `dpo_audit.py` – DPO-Audit for prompt interference detection (NEU)
   - Pass@1 protection mechanisms implemented
+  - TRL integration for DPO training
 
-### 🔧 Implemented Features
+### 🔄 In Progress
 
-- **7 Epistemic Modes**: DIRECT_ANSWER, CAUTIOUS_LIMIT, ABSTAIN, CLARIFY, REJECT_PREMISE, REQUEST_TOOL, PROBABILISTIC
-- **Pass@1 Protection**: Two-tier evaluation system preventing Pass@k optimization from degrading Pass@1 performance
-- **Core Reliability Metrics**: Pass@1, ECE, Brier Score, Hallucination Rate, Abstention AUROC
-- **DPO Audit Tools**: Detects prompt interference and bias patterns in preference data
-- **Regression Detection**: Automated checkpoint monitoring for training stability
+- **Phase 2**: SFT Testing on RTX 3050 🔄 **LÄUFT** (seit 20:58)
+  - Training: Qwen2.5-3B-Instruct with QLoRA 4-bit
+  - Progress: ~1% (685/60000 steps for 1 epoch)
+  - Speed: ~1.76s/step
+  - Expected completion: ~30 hours for 3 epochs
+  - GPU utilization: 100%, 65°C, 4.9 GB VRAM
 
-### 📋 In Progress
+### 📋 Ready to Start
 
-- **Phase 2-6**: Testing & Validation on RTX 3050 (8GB)
-  - SFT/DPO pipeline validation with smaller models (0.6B-3B)
-  - Hyperparameter tuning on local hardware
-  - Evaluation suite testing
-- **Phase 7**: Final Production Training on H100 (pending)
-  - Full Qwen3-32B training after local validation
+- **Phase 3**: DPO Testing 📋 **BEREIT** (wartet auf SFT-Completion)
+  - DPO-Dataset: 60k preference pairs ✅ generiert
+  - DPO-Audit: ✅ **BESTANDEN** (Difficulty: 54.9%, Verbosity: 0.78, Abstain: 14.9%)
+  - Training script: `scripts/run_dpo_training.sh` ✅ vorbereitet
+  - Expected duration: ~15-20 hours
+
+### ⏳ Planned
+
+- **Phase 4-6**: Calibration, Evaluation, Red Teaming (after Phase 3)
+- **Phase 7**: Final Production Training on H100 (pending local validation)
 
 ---
 
@@ -108,14 +118,14 @@ Instead of generic instruction data, we generate:
 While general models optimize for broad capabilities, Diogenes:
 - Targets critical domains: **medicine, law, finance, manufacturing, IT**
 - Prioritizes **safety over engagement** in high-risk scenarios
-- Includes **Red Teaming (Phase 5)** specifically for hallucination attacks
+- Includes **Red Teaming (Phase 6)** specifically for hallucination attacks
 
 ### Training Philosophy
 
 ```
 Traditional Training:
   User asks → Model answers (always confident, always helpful)
-  
+
 Diogenes Training:
   User asks → Model evaluates:
     ├─ Do I know this? → Answer with appropriate confidence
@@ -135,6 +145,8 @@ In critical domains, a **confident wrong answer** is worse than **no answer**:
 
 Diogenes is built for scenarios where **being reliably uncertain** is more valuable than **being confidently wrong**.
 
+---
+
 ## Epistemic Modes
 
 The model decides between seven response modes for each query:
@@ -149,14 +161,16 @@ The model decides between seven response modes for each query:
 | `REQUEST_TOOL` | Request external data/tools |
 | `PROBABILISTIC` | Uncertain but plausible reasoning |
 
+---
+
 ## Installation
 
 ### Prerequisites
 
 - Python 3.10 or 3.11
-- NVIDIA GPU with 80GB+ VRAM (H100 recommended)
+- NVIDIA GPU with 8GB+ VRAM (for development), 80GB+ for production (H100)
 - CUDA 12.1+
-- conda or venv for environment management
+- venv for environment management
 
 ### Quick Start
 
@@ -165,9 +179,12 @@ The model decides between seven response modes for each query:
 git clone https://github.com/diogenes/diogenes.git
 cd diogenes
 
-# Create conda environment
-conda create -n diogenes python=3.10
-conda activate diogenes
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Upgrade pip
+pip install --upgrade pip
 
 # Install dependencies
 pip install -e ".[dev]"
@@ -182,42 +199,54 @@ python scripts/download_model.py
 python scripts/test_inference.py
 ```
 
+---
+
 ## Project Structure
 
 ```
 diogenes/
-├── src/                 # Source code
-│   └── diogenes/        # Main package
+├── src/                     # Source code
+│   └── diogenes/            # Main package
 │       ├── __init__.py
-│       ├── config.py           # Configuration management
-│       ├── dataset_generator.py # SFT/DPO data generation
-│       ├── eval_metrics.py     # Core reliability metrics
-│       ├── inference.py        # Inference engine
-│       ├── model.py            # Model loading/wrapping
-│       ├── pass1_protection.py # Regression detection
-│       ├── train_sft.py        # SFT training script
-│       └── train_dpo.py        # DPO training script
-├── configs/             # Configuration files
+│       ├── config.py        # Configuration management
+│       ├── dataset_generator.py  # SFT/DPO data generation
+│       ├── dpo_audit.py     # DPO-Audit for prompt interference (NEU)
+│       ├── eval_metrics.py  # Core reliability metrics
+│       ├── inference.py     # Inference engine
+│       ├── model.py         # Model loading/wrapping
+│       ├── pass1_protection.py  # Regression detection
+│       ├── train_sft.py     # SFT training script
+│       └── train_dpo.py     # DPO training script
+├── configs/                 # Configuration files
 │   ├── config.yaml
 │   └── remote_config.yaml
-├── datasets/            # Training/evaluation datasets
-├── models/              # Model checkpoints
-├── scripts/             # Utility scripts
+├── datasets/                # Training/evaluation datasets
+│   ├── sft_dataset.jsonl    (80k samples)
+│   ├── dpo_dataset.jsonl    (60k pairs)
+│   ├── sft_statistics.json
+│   └── dpo_statistics.json
+├── models/                  # Model checkpoints
+├── scripts/                 # Utility scripts
 │   ├── download_model.py
 │   ├── download_gguf.py
 │   ├── test_inference.py
 │   ├── setup_env.py
-│   └── prepare_remote_machine.py
-├── tests/               # Test suite
-├── docs/                # Documentation
+│   ├── prepare_remote_machine.py
+│   ├── run_dpo_training.sh  # DPO-Training Script (NEU)
+│   └── pass1_protection_check.py  # Pass@1 Check (NEU)
+├── tests/                   # Test suite
+├── docs/                    # Documentation
 │   ├── IMPLEMENTATION_SUMMARY.md
 │   ├── PASS1_GUARDRAILS.md
-│   └── phase0_quickstart.md
-├── phasen/              # Phase documentation (DE)
+│   ├── phase0_quickstart.md
+│   └── phase3_dpo_ready.md  # Phase 3 Anleitung (NEU)
+├── phasen/                  # Phase documentation (DE)
 │   ├── phase_0.md through phase_7.md
-├── pyproject.toml       # Project configuration
-└── README.md            # This file
+├── pyproject.toml           # Project configuration
+└── README.md                # This file
 ```
+
+---
 
 ## Usage
 
@@ -239,6 +268,8 @@ response = inference.generate("What is the capital of France?")
 print(response)
 ```
 
+---
+
 ## Training Pipeline
 
 ### Development Workflow
@@ -255,44 +286,52 @@ print(response)
 
 ### Implemented Components
 
-1. **Dataset Generation** ✓
+1. **Dataset Generation** ✅
    - SFT Dataset: 80k samples covering 7 epistemic modes
    - DPO Dataset: 60k preference pairs with hallucination penalty
    - JSON schema with reasoning traces, risk levels, confidence targets
+   - **DPO-Audit bestanden** ✅ (Difficulty: 54.9%, Verbosity: 0.78)
 
-2. **Training Scripts** ✓
+2. **Training Scripts** ✅
    - `train_sft.py`: LoRA/QLoRA (4-bit) with rank 32, alpha 64
    - `train_dpo.py`: Direct Preference Optimization with β=0.1-0.3
+   - `dpo_audit.py`: DPO-Audit for prompt interference detection
    - Target modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
 
-3. **Evaluation & Protection** ✓
+3. **Evaluation & Protection** ✅
    - Pass@1 regression detection
    - Core Reliability Metrics (Tier 1)
    - Special Metrics for math/code (Tier 2, monitoring only)
    - DPO audit for prompt interference
 
+4. **Automation Scripts** ✅
+   - `scripts/run_dpo_training.sh`: DPO-Training automatisieren
+   - `scripts/pass1_protection_check.py`: Pass@1 Regression prüfen
+
 ### Training Phases
 
 #### Local Development (RTX 3050 8GB)
 
-| Phase | Model | Duration | Purpose |
-|-------|-------|----------|---------|
-| **Phase 0** | Qwen3-0.6B | < 1 day | Pipeline validation |
-| **Phase 1** | Qwen3-0.6B | 1-2 days | Script development |
-| **Phase 2** | Qwen2.5-3B | 2-3 days | SFT testing & tuning |
-| **Phase 3** | Qwen2.5-3B | 2-3 days | DPO testing & tuning |
-| **Phase 4** | Qwen2.5-3B | 1 day | Calibration testing |
-| **Phase 5** | Qwen2.5-3B | 1-2 days | Evaluation validation |
-| **Phase 6** | Qwen2.5-3B | 1-2 days | Red team testing |
+| Phase | Model | Duration | Status |
+|-------|-------|----------|--------|
+| **Phase 0** | Qwen3-0.6B | < 1 day | ✅ **ABGESCHLOSSEN** |
+| **Phase 1** | Qwen3-0.6B | 1-2 days | ✅ **ABGESCHLOSSEN** |
+| **Phase 2** | Qwen2.5-3B | ~30 hours | 🔄 **LÄUFT** (1%) |
+| **Phase 3** | Qwen2.5-3B | ~15-20 hours | 📋 **BEREIT** |
+| **Phase 4** | Qwen2.5-3B | 1 day | ⏳ **GEPLANT** |
+| **Phase 5** | Qwen2.5-3B | 1-2 days | ⏳ **GEPLANT** |
+| **Phase 6** | Qwen2.5-3B | 1-2 days | ⏳ **GEPLANT** |
 
 #### Production Training (H100 80GB)
 
-| Phase | Model | Duration | Purpose |
-|-------|-------|----------|---------|
-| **Phase 7-A** | Qwen3-32B | ~4 hours | Final SFT |
-| **Phase 7-B** | Qwen3-32B | ~6 hours | Final DPO |
-| **Phase 7-C** | Qwen3-32B | ~2 hours | Final calibration |
-| **Phase 7-D** | Qwen3-32B | ~4 hours | Full evaluation |
+| Phase | Model | Duration | Status |
+|-------|-------|----------|--------|
+| **Phase 7-A** | Qwen3-32B | ~4 hours | ⏳ **GEPLANT** |
+| **Phase 7-B** | Qwen3-32B | ~6 hours | ⏳ **GEPLANT** |
+| **Phase 7-C** | Qwen3-32B | ~2 hours | ⏳ **GEPLANT** |
+| **Phase 7-D** | Qwen3-32B | ~4 hours | ⏳ **GEPLANT** |
+
+---
 
 ## Evaluation Metrics
 
@@ -325,6 +364,8 @@ print(response)
 - **GPQA**: Expert-level knowledge
 - **LiveBench**: Current capabilities
 
+---
+
 ## Expected Results
 
 | Metric | Target Improvement |
@@ -333,14 +374,60 @@ print(response)
 | HaluEval | –20–30% hallucinations |
 | ECE | –40% |
 | Abstention AUROC | +15% |
+| Utility Score | Significantly higher |
+
+---
+
+## Monitoring Training
+
+### Check SFT Training Progress
+
+```bash
+# View training log
+tail -f /tmp/sft_train.log
+
+# Monitor GPU utilization
+watch -n 2 nvidia-smi
+
+# Check process status
+ps aux | grep train_sft | grep -v grep
+```
+
+### Start DPO Training (after SFT completes)
+
+```bash
+# Simple start
+./scripts/run_dpo_training.sh
+
+# Or with explicit paths
+./scripts/run_dpo_training.sh \
+    models/sft_3b_test/final_checkpoint \
+    models/dpo_3b_test \
+    datasets/dpo_dataset.jsonl \
+    2
+```
+
+### Run Pass@1 Protection Check
+
+```bash
+python3 scripts/pass1_protection_check.py \
+    --model-path models/dpo_3b_test \
+    --baseline-pass-at-1 0.75
+```
+
+---
 
 ## License
 
 Apache License 2.0
 
+---
+
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+---
 
 ## Citation
 
@@ -351,3 +438,13 @@ Contributions are welcome! Please read our contributing guidelines before submit
   description = {Epistemically optimized language model based on Qwen3-32B}
 }
 ```
+
+---
+
+## Quick Links
+
+- **Phase Documentation**: `phasen/phase_0.md` – `phasen/phase_7.md`
+- **Pass@1 Guardrails**: `docs/PASS1_GUARDRAILS.md`
+- **Phase 3 Guide**: `docs/phase3_dpo_ready.md`
+- **Implementation Summary**: `docs/IMPLEMENTATION_SUMMARY.md`
+- **RTX 3050 Setup**: `docs/phase0_quickstart.md`
