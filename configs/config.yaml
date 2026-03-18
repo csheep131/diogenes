@@ -1,0 +1,53 @@
+# Diogenes Configuration
+
+# Model settings - Phase 0: Small model for pipeline validation
+model:
+  name: "Qwen/Qwen3-0.6B"  # Phase 0: 0.6B for RTX 3050
+  # Alternatives: "Qwen/Qwen3-1.7B", "Qwen/Qwen2.5-3B-Instruct"
+  cache_dir: "./models"
+  use_4bit: false  # Not needed for small models
+  trust_remote_code: true
+
+# LoRA settings
+lora:
+  rank: 32
+  alpha: 64
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  dropout: 0.05
+
+# Training settings
+training:
+  output_dir: "./output"
+  num_train_epochs: 3
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  learning_rate: 2e-4
+  warmup_ratio: 0.03
+  logging_steps: 10
+  save_strategy: "epoch"
+  bf16: true
+  fp16: false
+
+# Inference settings
+inference:
+  max_length: 512
+  temperature: 0.7
+  top_p: 0.9
+  do_sample: true
+
+# Epistemic modes
+modes:
+  - "direct_answer"
+  - "cautious_limit"
+  - "abstain"
+  - "clarify"
+  - "reject_premise"
+  - "request_tool"
+  - "probabilistic"
