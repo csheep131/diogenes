@@ -1,0 +1,78 @@
+# Remote Machine Configuration for Diogenes SFT Training
+# ========================================================
+#
+# Usage:
+#   python scripts/prepare_remote_machine.py --config configs/remote_config.yaml
+#
+# This configuration file contains all settings for preparing a remote
+# GPU machine for training the Diogenes model.
+
+# SSH Connection Settings
+# -----------------------
+host: ""              # Required: Remote machine hostname or IP address
+user: "root"          # SSH username (default: root)
+port: 22              # SSH port (default: 22)
+ssh_key: ""           # Optional: Path to SSH private key file
+                      # Example: "~/.ssh/id_ed25519"
+                      # If empty, uses default SSH key or password
+
+# Project Settings
+# ----------------
+project_dir: "/opt/diogenes"  # Directory on remote machine for project files
+
+# Dataset Settings
+# ----------------
+sync_datasets: false   # Whether to sync datasets during preparation
+                       # Set to true if you have local datasets to upload
+
+dataset_path: ""       # Local path to datasets directory
+                       # Example: "./datasets/sft_dataset.jsonl"
+                       # Leave empty to download datasets during training
+
+# Hardware Requirements (for validation)
+# --------------------------------------
+# The script will check these and warn if not met
+min_vram_gb: 70        # Minimum GPU VRAM (H100/A100 80GB recommended)
+min_disk_gb: 50        # Minimum free disk space
+min_ram_gb: 32         # Minimum system RAM
+
+# Training Configuration Reference
+# --------------------------------
+# After preparation, training can be started with:
+#   ssh <user>@<host> 'cd <project_dir> && ./train.sh'
+#
+# Or manually on the remote machine:
+#   cd /opt/diogenes
+#   ./train.sh
+#
+# The train.sh script will:
+#   1. Create a Python virtual environment
+#   2. Install all dependencies from pyproject.toml
+#   3. Run the SFT training script with configs/config.yaml
+
+# Optional: Direct Training Parameters
+# ------------------------------------
+# These can be used to override config.yaml during remote training
+training:
+  model_name: "Qwen/Qwen3-32B"
+  output_dir: "./checkpoints/sft"
+  num_train_epochs: 3
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 2e-4
+  lora_r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  quantization: "4bit"  # Options: "4bit", "8bit", "none"
+  logging_steps: 10
+  save_steps: 500
+  warmup_ratio: 0.03
+
+# Notes
+# -----
+# - Ensure the remote machine has internet access for downloading dependencies
+# - For air-gapped systems, pre-download all packages and datasets
+# - The script installs Docker and NVIDIA Container Toolkit automatically
+# - Root/sudo access is required on the remote machine
+# - After preparation, verify GPU access with:
+#   ssh <user>@<host> 'docker run --rm --gpus all nvidia/cuda:12.1.0-base nvidia-smi'
