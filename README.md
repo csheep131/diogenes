@@ -16,6 +16,48 @@ The model is designed for deployment in critical domains (IT, manufacturing, med
 
 ---
 
+## Current Status
+
+**As of March 18, 2026**
+
+### Development Workflow
+
+**All testing and development runs on local RTX 3050 (8GB VRAM).** Only the final production model will be trained on H100 infrastructure.
+
+### ✅ Completed (Phase 0-1)
+
+- **Phase 0**: Infrastructure & Pipeline Validation ✅
+  - Repository structure established
+  - Development environment configured for RTX 3050 (8GB)
+  - Model download scripts (GGUF & Transformers formats)
+  - Inference pipeline validated on consumer hardware
+  - Epistemic mode detection tested
+
+- **Phase 1**: Dataset Generator & Training Scripts ✅
+  - `dataset_generator.py` – SFT (80k samples) and DPO (60k pairs) generation
+  - `train_sft.py` – Supervised Fine-Tuning with LoRA/QLoRA support
+  - `train_dpo.py` – Direct Preference Optimization with hallucination penalty
+  - Pass@1 protection mechanisms implemented
+
+### 🔧 Implemented Features
+
+- **7 Epistemic Modes**: DIRECT_ANSWER, CAUTIOUS_LIMIT, ABSTAIN, CLARIFY, REJECT_PREMISE, REQUEST_TOOL, PROBABILISTIC
+- **Pass@1 Protection**: Two-tier evaluation system preventing Pass@k optimization from degrading Pass@1 performance
+- **Core Reliability Metrics**: Pass@1, ECE, Brier Score, Hallucination Rate, Abstention AUROC
+- **DPO Audit Tools**: Detects prompt interference and bias patterns in preference data
+- **Regression Detection**: Automated checkpoint monitoring for training stability
+
+### 📋 In Progress
+
+- **Phase 2-6**: Testing & Validation on RTX 3050 (8GB)
+  - SFT/DPO pipeline validation with smaller models (0.6B-3B)
+  - Hyperparameter tuning on local hardware
+  - Evaluation suite testing
+- **Phase 7**: Final Production Training on H100 (pending)
+  - Full Qwen3-32B training after local validation
+
+---
+
 ## What Makes Diogenes Training Different
 
 Most LLM fine-tuning projects optimize for **helpfulness** and **engagement**. Diogenes optimizes for **epistemic honesty** — the model learns to recognize when it *doesn't* know something.
@@ -146,12 +188,33 @@ python scripts/test_inference.py
 diogenes/
 ├── src/                 # Source code
 │   └── diogenes/        # Main package
+│       ├── __init__.py
+│       ├── config.py           # Configuration management
+│       ├── dataset_generator.py # SFT/DPO data generation
+│       ├── eval_metrics.py     # Core reliability metrics
+│       ├── inference.py        # Inference engine
+│       ├── model.py            # Model loading/wrapping
+│       ├── pass1_protection.py # Regression detection
+│       ├── train_sft.py        # SFT training script
+│       └── train_dpo.py        # DPO training script
 ├── configs/             # Configuration files
+│   ├── config.yaml
+│   └── remote_config.yaml
 ├── datasets/            # Training/evaluation datasets
 ├── models/              # Model checkpoints
 ├── scripts/             # Utility scripts
+│   ├── download_model.py
+│   ├── download_gguf.py
+│   ├── test_inference.py
+│   ├── setup_env.py
+│   └── prepare_remote_machine.py
 ├── tests/               # Test suite
 ├── docs/                # Documentation
+│   ├── IMPLEMENTATION_SUMMARY.md
+│   ├── PASS1_GUARDRAILS.md
+│   └── phase0_quickstart.md
+├── phasen/              # Phase documentation (DE)
+│   ├── phase_0.md through phase_7.md
 ├── pyproject.toml       # Project configuration
 └── README.md            # This file
 ```
@@ -178,6 +241,26 @@ print(response)
 
 ## Training Pipeline
 
+### Implemented Components
+
+1. **Dataset Generation** ✓
+   - SFT Dataset: 80k samples covering 7 epistemic modes
+   - DPO Dataset: 60k preference pairs with hallucination penalty
+   - JSON schema with reasoning traces, risk levels, confidence targets
+
+2. **Training Scripts** ✓
+   - `train_sft.py`: LoRA/QLoRA (4-bit) with rank 32, alpha 64
+   - `train_dpo.py`: Direct Preference Optimization with β=0.1-0.3
+   - Target modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
+
+3. **Evaluation & Protection** ✓
+   - Pass@1 regression detection
+   - Core Reliability Metrics (Tier 1)
+   - Special Metrics for math/code (Tier 2, monitoring only)
+   - DPO audit for prompt interference
+
+### Training Phases (Planned)
+
 1. **Phase 1 - SFT**: Supervised Fine-Tuning (~4 hours on H100)
 2. **Phase 2 - DPO**: Direct Preference Optimization (~6 hours)
 3. **Phase 3 - Calibration**: Temperature scaling for confidence
@@ -186,20 +269,34 @@ print(response)
 
 ## Evaluation Metrics
 
-### Primary Benchmarks
-- TruthfulQA
-- HaluEval
-- WildBench
+### Tier 1: Core Reliability (Primary)
 
-### Secondary Benchmarks
-- GPQA
-- LiveBench
+| Metric | Description | Target |
+|--------|-------------|--------|
+| **Pass@1** | Single-attempt accuracy | Maximize |
+| **Hallucination Rate** | False claim frequency | < 5% |
+| **ECE** | Expected Calibration Error | < 0.05 (–40%) |
+| **Brier Score** | Probability calibration | Minimize |
+| **Abstention AUROC** | Knowledge boundary detection | +15% |
+| **Mode Accuracy** | Epistemic mode classification | Maximize |
+| **False Premise Detection** | Flawed question recognition | Maximize |
 
-### Custom Metrics
-- Epistemic Gap Evaluation
-- Mode Confusion Matrix
-- Utility Score
-- Expected Calibration Error (ECE)
+### Tier 2: Special Metrics (Monitoring Only)
+
+| Metric | Domain | Usage |
+|--------|--------|-------|
+| **Pass@k** | Math, Code | Monitor only, never optimize |
+| **Best-of-k** | Tool-assisted | Special cases |
+
+> **⚠️ Pass@1 Protection**: Tier 2 metrics are NEVER used for checkpoint promotion or global reward optimization. See `docs/PASS1_GUARDRAILS.md`.
+
+### Traditional Benchmarks
+
+- **TruthfulQA**: Target +8–15%
+- **HaluEval**: Target –20–30% hallucinations
+- **WildBench**: Real-world performance
+- **GPQA**: Expert-level knowledge
+- **LiveBench**: Current capabilities
 
 ## Expected Results
 

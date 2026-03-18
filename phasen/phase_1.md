@@ -2,12 +2,15 @@
 
 **Dauer:** Tag 1–2
 
+**Status:** ✅ **ABGESCHLOSSEN** (18. März 2026)
+
 ## Ziele
 
-- [ ] Dataset Generator für 80k SFT Samples
-- [ ] Dataset Generator für 60k DPO Paare
-- [ ] SFT Training Script
-- [ ] DPO Training Script
+- [x] Dataset Generator für 80k SFT Samples
+- [x] Dataset Generator für 60k DPO Paare
+- [x] SFT Training Script
+- [x] DPO Training Script
+- [x] Pass@1 Protection implementiert
 
 ## Hintergrund: SFT und DPO
 
@@ -95,11 +98,11 @@ Pre-trained Model (Qwen 7B)
 
 ## Aufgaben
 
-### 1. Dataset Generator erstellen
+### 1. Dataset Generator erstellen ✅
 
 #### SFT Dataset (~80.000 Samples)
-- 7 epistemische Modi abdecken
-- Fehlerklassen generieren:
+- [x] 7 epistemische Modi abdecken
+- [x] Fehlerklassen generieren:
   - Ignorance → ABSTAIN
   - Staleness → CAUTIOUS_LIMIT
   - Ambiguity → CLARIFY
@@ -110,9 +113,9 @@ Pre-trained Model (Qwen 7B)
   - Tool Required → REQUEST_TOOL
 
 #### DPO Dataset (~60.000 Paare)
-- Ranking: Gold > Acceptable > Weak > Hallucination
-- Halluzinations-Reduktion fokussieren
-- Präferenzdaten strukturieren
+- [x] Ranking: Gold > Acceptable > Weak > Hallucination
+- [x] Halluzinations-Reduktion fokussieren
+- [x] Präferenzdaten strukturieren
 
 #### JSON Schema implementieren
 ```json
@@ -132,29 +135,141 @@ Pre-trained Model (Qwen 7B)
 }
 ```
 
-### 2. SFT Training Script
-- LoRA Konfiguration (rank 32, alpha 64)
-- Target Modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
-- QLoRA (4-bit) Quantisierung
-- 3 Epochen, ~80k Samples
-- Batch Size & Learning Rate optimieren
+### 2. SFT Training Script ✅
+- [x] LoRA Konfiguration (rank 32, alpha 64)
+- [x] Target Modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
+- [x] QLoRA (4-bit) Quantisierung
+- [x] 3 Epochen, ~80k Samples
+- [x] Batch Size & Learning Rate optimieren
 
-### 3. DPO Training Script
-- Preference Pairing implementieren
-- Hallucination Penalty
-- Ehrliche Antworten belohnen
-- 60k Paare verarbeiten
+### 3. DPO Training Script ✅
+- [x] Preference Pairing implementieren
+- [x] Hallucination Penalty
+- [x] Ehrliche Antworten belohnen
+- [x] 60k Paare verarbeiten
+
+### 4. Pass@1 Protection ✅ (Neu)
+- [x] Zwei-Tier-Evaluationssystem implementiert
+- [x] Core Reliability Metrics (Tier 1)
+- [x] Special Metrics für Math/Code (Tier 2, nur Monitoring)
+- [x] Regression Detection für Checkpoint-Promotion
+- [x] DPO Audit für Prompt-Interferenz
 
 ## Deliverables
 
-- [ ] `dataset_generator.py` – voll funktionsfähig
-- [ ] `train_sft.py` – SFT Training Script
-- [ ] `train_dpo.py` – DPO Training Script
-- [ ] Test-Datensatz (Stichprobe) validiert
+- [x] `src/diogenes/dataset_generator.py` – voll funktionsfähig
+- [x] `src/diogenes/train_sft.py` – SFT Training Script
+- [x] `src/diogenes/train_dpo.py` – DPO Training Script
+- [x] `src/diogenes/eval_metrics.py` – Core Reliability Metrics
+- [x] `src/diogenes/pass1_protection.py` – Pass@1 Schutz
+- [x] `docs/PASS1_GUARDRAILS.md` – Produkt-Richtlinien
+- [x] Test-Datensatz (Stichprobe) validiert
 
 ## Erfolgskriterien
 
-- Generator erstellt valide JSON-Daten
-- SFT Script startet ohne Fehler
-- DPO Script verarbeitet Preference Pairs
-- Datenqualität überprüft (Stichprobe)
+- [x] Generator erstellt valide JSON-Daten
+- [x] SFT Script startet ohne Fehler
+- [x] DPO Script verarbeitet Preference Pairs
+- [x] Datenqualität überprüft (Stichprobe)
+- [x] Pass@1 Protection getestet
+
+## Implementierte Komponenten
+
+### `dataset_generator.py`
+
+**Funktionen:**
+- Generiert SFT-Samples mit 7 epistemischen Modi
+- Erstellt DPO-Präferenzpaare mit Hallucination-Ranking
+- Unterstützt Reasoning-Traces und Confidence-Targets
+- Tagging nach `risk_level`, `time_sensitive`, `needs_tool`
+
+### `train_sft.py`
+
+**Features:**
+- LoRA/QLoRA Support (4-bit Quantisierung)
+- Konfigurierbare Hyperparameter via YAML
+- Checkpoint-Speicherung
+- Weights & Biases Logging
+- Gradient Accumulation für große Batch-Sizes
+
+### `train_dpo.py`
+
+**Features:**
+- Direct Preference Optimization
+- Hallucination Penalty im Loss
+- Referenzmodell-Integration
+- Beta-Parameter für Präferenz-Stärke
+- Early Stopping bei Overfitting
+
+### `eval_metrics.py`
+
+**Tier 1: Core Reliability Metrics**
+- `compute_pass_at_k()` - Pass@1 und Pass@k
+- `compute_expected_calibration_error()` - ECE
+- `compute_brier_score()` - Kalibrierung
+- `compute_abstention_auroc()` - Wissensgrenzen
+- `compute_hallucination_rate()` - Halluzinationen
+- `compute_core_reliability_metrics()` - Komplette Suite
+
+**Tier 2: Special Metrics**
+- `compute_special_metrics()` - Nur für Math/Code
+- Pass@k Monitoring (nie für Optimierung)
+
+### `pass1_protection.py`
+
+**Komponenten:**
+- `Pass1RegressionTracker` - Checkpoint-Überwachung
+- `run_pass1_protection_test()` - Vollständige Evaluation
+- `check_dpo_for_prompt_interference()` - DPO-Audit
+
+## Entscheidungsmatrix für Checkpoint-Promotion
+
+| Bedingung | Pass@1 Δ | Pass@k Δ | Aktion |
+|-----------|----------|----------|--------|
+| **Kritische Regression** | < -2% | > +1% | ❌ NICHT PROMOTEN |
+| **Warnung** | < -1% | > +0.5% | ⚠️ Vorsichtig prüfen |
+| **Verbesserung** | > +1% | Beliebig | ✓ Sicher |
+| **Stabil** | ±1% | Beliebig | ✓ Sicher |
+
+## DPO-Audit Grenzwerte
+
+| Metrik | Schwellenwert | Status |
+|--------|---------------|--------|
+| Difficulty Bias | < 30% hard | ✓ Pass |
+| Verbosity Bias | < 1.2 Ratio | ✓ Pass |
+| Abstain Repr. | > 5% | ✓ Pass |
+
+## Nächste Schritte
+
+➡️ **Phase 2**: SFT Training auf Remote-H100
+
+1. Remote-Maschine vorbereiten:
+   ```bash
+   python scripts/prepare_remote_machine.py --config configs/remote_config.yaml
+   ```
+
+2. SFT Training starten:
+   ```bash
+   ssh <user>@<host> 'cd /opt/diogenes && ./train.sh'
+   ```
+
+3. Checkpoints mit Pass@1 Protection überwachen:
+   ```python
+   from diogenes import Pass1RegressionTracker
+   
+   tracker = Pass1RegressionTracker()
+   result = tracker.record_checkpoint(
+       checkpoint_name="epoch_1",
+       core_metrics=core_metrics,
+       pass_at_k_math={5: 0.90, 10: 0.93},
+   )
+   
+   if result.should_promote:
+       print("✓ Checkpoint safe to promote")
+   ```
+
+## Referenzen
+
+- `docs/PASS1_GUARDRAILS.md` – Vollständige Pass@1-Richtlinien
+- `docs/IMPLEMENTATION_SUMMARY.md` – Implementierungs-Übersicht
+- `tests/test_pass1_protection.py` – Test-Suite
