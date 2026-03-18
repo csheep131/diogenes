@@ -53,6 +53,7 @@ class DiogenesModel:
         use_4bit: bool = False,
         trust_remote_code: bool = True,
         cache_dir: Optional[str] = None,
+        attn_implementation: str = "eager",
     ) -> "DiogenesModel":
         """Load Diogenes model from pretrained weights.
 
@@ -61,11 +62,15 @@ class DiogenesModel:
             use_4bit: Use 4-bit quantization (QLoRA)
             trust_remote_code: Trust remote code from HF
             cache_dir: Cache directory for model weights
+            attn_implementation: Attention implementation to use.
+                                 Options: "eager", "flash_attention_2", "sdpa"
+                                 Default "eager" works on all systems.
 
         Returns:
             DiogenesModel instance
         """
         logger.info(f"Loading model: {model_name_or_path}")
+        logger.info(f"Attention implementation: {attn_implementation}")
 
         # Configure quantization
         bnb_config = None
@@ -98,7 +103,7 @@ class DiogenesModel:
             trust_remote_code=trust_remote_code,
             cache_dir=cache_dir,
             torch_dtype=torch.bfloat16 if not use_4bit else torch.float16,
-            attn_implementation="flash_attention_2" if torch.cuda.is_available() else None,
+            attn_implementation=attn_implementation,
         )
 
         logger.info(f"Model loaded successfully on device: {model.device}")
@@ -158,11 +163,12 @@ class DiogenesModel:
         logger.info(f"Model saved to: {save_path}")
 
     @classmethod
-    def load(cls, model_path: Union[str, Path]) -> "DiogenesModel":
+    def load(cls, model_path: Union[str, Path], attn_implementation: str = "eager") -> "DiogenesModel":
         """Load model from local directory.
 
         Args:
             model_path: Path to model directory
+            attn_implementation: Attention implementation to use
 
         Returns:
             DiogenesModel instance
@@ -171,19 +177,21 @@ class DiogenesModel:
         if not model_path.exists():
             raise FileNotFoundError(f"Model path not found: {model_path}")
 
-        return cls.from_pretrained(str(model_path), use_4bit=False)
+        return cls.from_pretrained(str(model_path), use_4bit=False, attn_implementation=attn_implementation)
 
 
 def load_base_model(
     model_name: str = "Qwen/Qwen3-0.6B",
     cache_dir: Optional[str] = None,
+    attn_implementation: str = "eager",
 ) -> DiogenesModel:
     """Convenience function to load the Qwen3 base model.
 
     Args:
-        model_name: Model name on HuggingFace. 
+        model_name: Model name on HuggingFace.
                     Recommended for Phase 0: Qwen/Qwen3-0.6B, Qwen/Qwen3-1.7B
         cache_dir: Cache directory
+        attn_implementation: Attention implementation to use
 
     Returns:
         Loaded DiogenesModel
@@ -191,4 +199,5 @@ def load_base_model(
     return DiogenesModel.from_pretrained(
         model_name_or_path=model_name,
         cache_dir=cache_dir,
+        attn_implementation=attn_implementation,
     )

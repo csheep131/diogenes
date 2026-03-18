@@ -89,6 +89,7 @@ def compare_models(
     temperature: float = 0.7,
     max_length: int = 512,
     top_p: float = 0.9,
+    attn_implementation: str = "eager",
     storage_path: Optional[str] = None,
     auto_judge: bool = False,
 ) -> ComparisonSummary:
@@ -106,6 +107,7 @@ def compare_models(
         temperature: Sampling temperature
         max_length: Maximum generation length
         top_p: Nucleus sampling parameter
+        attn_implementation: Attention implementation to use
         storage_path: Path to store results
         auto_judge: Automatically judge winner based on confidence
 
@@ -126,6 +128,7 @@ def compare_models(
         model_a = DiogenesModel.from_pretrained(
             model_name_or_path=model_a_path or model_a_name,
             use_4bit=use_4bit,
+            attn_implementation=attn_implementation,
         )
 
     if model_b is None:
@@ -133,6 +136,7 @@ def compare_models(
         model_b = DiogenesModel.from_pretrained(
             model_name_or_path=model_b_path or model_b_name,
             use_4bit=use_4bit,
+            attn_implementation=attn_implementation,
         )
 
     # Create inference engines

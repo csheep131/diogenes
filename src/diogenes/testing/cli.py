@@ -84,6 +84,12 @@ def quick_cmd(
         min=0.0,
         max=1.0,
     ),
+    attn_implementation: str = typer.Option(
+        "eager",
+        "--attn-implementation",
+        "-a",
+        help="Attention implementation: eager, flash_attention_2, sdpa",
+    ),
     storage: Optional[str] = typer.Option(
         None,
         "--storage",
@@ -109,6 +115,7 @@ def quick_cmd(
         diogenes-test quick "What is the capital of France?"
         diogenes-test quick -m ./models/my-model -t 0.5
         diogenes-test quick --interactive
+        diogenes-test quick --attn-implementation eager
     """
     if interactive or prompt is None:
         # Interactive mode
@@ -119,6 +126,7 @@ def quick_cmd(
             temperature=temperature,
             max_length=max_length,
             top_p=top_p,
+            attn_implementation=attn_implementation,
             storage_path=storage,
             verbose=verbose,
         )
@@ -132,6 +140,7 @@ def quick_cmd(
             temperature=temperature,
             max_length=max_length,
             top_p=top_p,
+            attn_implementation=attn_implementation,
             storage_path=storage,
             verbose=verbose,
         )
@@ -290,6 +299,11 @@ def compare_cmd(
         "-l",
         help="Maximum generation length",
     ),
+    attn_implementation: str = typer.Option(
+        "eager",
+        "--attn-implementation",
+        help="Attention implementation: eager, flash_attention_2, sdpa",
+    ),
     storage: Optional[str] = typer.Option(
         None,
         "--storage",
@@ -322,6 +336,7 @@ def compare_cmd(
         use_4bit=use_4bit,
         temperature=temperature,
         max_length=max_length,
+        attn_implementation=attn_implementation,
         storage_path=storage,
         auto_judge=auto_judge,
     )

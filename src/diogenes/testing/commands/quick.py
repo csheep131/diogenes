@@ -31,6 +31,7 @@ def quick_test(
     return_logprobs: bool = True,
     storage_path: Optional[str] = None,
     verbose: bool = False,
+    attn_implementation: str = "eager",
 ) -> TestResult:
     """Run a quick single-prompt test.
 
@@ -46,6 +47,8 @@ def quick_test(
         return_logprobs: Return log probabilities
         storage_path: Path to store results
         verbose: Show detailed output
+        attn_implementation: Attention implementation to use.
+                           Options: "auto", "eager", "flash_attention_2", "sdpa"
 
     Returns:
         TestResult object
@@ -60,6 +63,7 @@ def quick_test(
             model_name_or_path=model_name,
             use_4bit=use_4bit,
             cache_dir=model_path,
+            attn_implementation=attn_implementation,
         )
 
     # Create inference engine
@@ -172,6 +176,7 @@ def _display_result(result: TestResult, verbose: bool = False) -> None:
 def interactive_quick_test(
     model: Optional[DiogenesModel] = None,
     model_name: str = "Qwen/Qwen3-0.6B",
+    attn_implementation: str = "eager",
     **kwargs,
 ) -> None:
     """Run interactive quick test mode.
@@ -179,6 +184,7 @@ def interactive_quick_test(
     Args:
         model: Pre-loaded model
         model_name: Model name for loading
+        attn_implementation: Attention implementation to use
         **kwargs: Additional arguments passed to quick_test
     """
     console.print("[bold cyan]Diogenes Quick Test - Interactive Mode[/bold cyan]")
@@ -199,6 +205,7 @@ def interactive_quick_test(
                 prompt=prompt,
                 model=model,
                 model_name=model_name,
+                attn_implementation=attn_implementation,
                 **kwargs,
             )
             console.print()  # Empty line

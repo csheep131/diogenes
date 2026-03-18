@@ -27,6 +27,7 @@ class TestConfig:
     model_name: str = "Qwen/Qwen3-0.6B"
     model_path: Optional[str] = None
     use_4bit: bool = False
+    attn_implementation: str = "eager"
 
     # Inference settings
     temperature: float = 0.7
@@ -149,6 +150,7 @@ class TestRunner:
                 model_name_or_path=self.config.model_name,
                 use_4bit=self.config.use_4bit,
                 cache_dir=self.config.model_path,
+                attn_implementation=self.config.attn_implementation,
             )
 
         self.inference = DiogenesInference(

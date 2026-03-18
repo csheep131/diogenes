@@ -1,0 +1,17 @@
+{
+  "total_pairs": 60000,
+  "difficulty_distribution": {
+    "easy": 9019,
+    "medium": 18068,
+    "hard": 32913
+  },
+  "avg_chosen_length": 16.16295,
+  "avg_rejected_length": 20.670366666666666,
+  "verbosity_ratio": 0.7819382336388162,
+  "difficulty_bias": false,
+  "verbosity_bias": false,
+  "abstain_representation": 0.14908333333333335,
+  "concerns": [],
+  "passed": true,
+  "recommendation": "PROCEED"
+}
