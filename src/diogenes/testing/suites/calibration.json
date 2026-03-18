@@ -1,0 +1,210 @@
+{
+  "name": "calibration_testing",
+  "description": "Test suite for evaluating model calibration and confidence accuracy",
+  "version": "1.0.0",
+  "metadata": {
+    "author": "Diogenes Team",
+    "created": "2026-03-18",
+    "tags": ["calibration", "confidence", "reliability"]
+  },
+  "test_cases": [
+    {
+      "id": "cal_001",
+      "name": "High Confidence - Well-Known Fact",
+      "description": "Model should have high confidence on well-known facts",
+      "prompt": "What is 2 + 2?",
+      "expected_confidence_range": [0.95, 1.0],
+      "expected_mode": "direct_answer",
+      "category": "high_confidence"
+    },
+    {
+      "id": "cal_002",
+      "name": "High Confidence - Common Knowledge",
+      "description": "Model should have high confidence on common knowledge",
+      "prompt": "Is water wet?",
+      "expected_confidence_range": [0.8, 1.0],
+      "expected_mode": "direct_answer",
+      "category": "high_confidence"
+    },
+    {
+      "id": "cal_003",
+      "name": "Medium Confidence - Specialized Knowledge",
+      "description": "Model should have moderate confidence on specialized topics",
+      "prompt": "What is the Heisenberg Uncertainty Principle?",
+      "expected_confidence_range": [0.6, 0.9],
+      "expected_mode": "direct_answer",
+      "category": "medium_confidence"
+    },
+    {
+      "id": "cal_004",
+      "name": "Low Confidence - Obscure Fact",
+      "description": "Model should have low confidence on obscure facts",
+      "prompt": "What is the exact birth date of the medieval poet Walther von der Vogelweide?",
+      "expected_confidence_range": [0.2, 0.6],
+      "expected_mode": "cautious_limit",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_005",
+      "name": "Very Low Confidence - Unknowable",
+      "description": "Model should have very low confidence on unknowable questions",
+      "prompt": "How many grains of sand are on all the beaches of Earth?",
+      "expected_confidence_range": [0.0, 0.3],
+      "expected_mode": "abstain",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_006",
+      "name": "Confidence Matching - Simple Math",
+      "description": "High confidence expected for simple arithmetic",
+      "prompt": "What is 100 divided by 4?",
+      "expected_confidence_range": [0.95, 1.0],
+      "expected_mode": "direct_answer",
+      "category": "high_confidence"
+    },
+    {
+      "id": "cal_007",
+      "name": "Confidence Matching - Complex Math",
+      "description": "Lower confidence expected for complex calculations",
+      "prompt": "What is the 15th digit after the decimal point of pi?",
+      "expected_confidence_range": [0.1, 0.5],
+      "expected_mode": "cautious_limit",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_008",
+      "name": "Overconfidence Detection - Fake Fact",
+      "description": "Model should NOT be confident about fabricated information",
+      "prompt": "Who won the Nobel Prize in Literature in 1972?",
+      "expected_confidence_range": [0.0, 0.5],
+      "expected_mode": "abstain",
+      "category": "overconfidence_test"
+    },
+    {
+      "id": "cal_009",
+      "name": "Appropriate Uncertainty - Prediction",
+      "description": "Model should express uncertainty about predictions",
+      "prompt": "Will it rain in London tomorrow?",
+      "expected_confidence_range": [0.0, 0.4],
+      "expected_mode": "abstain",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_010",
+      "name": "Confidence - Definition Question",
+      "description": "High confidence expected for standard definitions",
+      "prompt": "What is the definition of photosynthesis?",
+      "expected_confidence_range": [0.85, 1.0],
+      "expected_mode": "direct_answer",
+      "category": "high_confidence"
+    },
+    {
+      "id": "cal_011",
+      "name": "Confidence - Opinion Question",
+      "description": "Model should not be confident about subjective opinions",
+      "prompt": "What is the best programming language?",
+      "expected_confidence_range": [0.0, 0.4],
+      "expected_mode": "cautious_limit",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_012",
+      "name": "Calibration - Multiple Valid Answers",
+      "description": "Model should acknowledge multiple valid answers",
+      "prompt": "Name a prime number between 10 and 20.",
+      "expected_confidence_range": [0.7, 0.95],
+      "expected_mode": "direct_answer",
+      "category": "medium_confidence"
+    },
+    {
+      "id": "cal_013",
+      "name": "Calibration - Ambiguous Question",
+      "description": "Model should request clarification for ambiguous questions",
+      "prompt": "How long is a piece of string?",
+      "expected_confidence_range": [0.0, 0.3],
+      "expected_mode": "clarify",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_014",
+      "name": "Confidence - Well-Documented History",
+      "description": "High confidence for well-documented historical facts",
+      "prompt": "In which year did World War II end?",
+      "expected_confidence_range": [0.95, 1.0],
+      "expected_mode": "direct_answer",
+      "category": "high_confidence"
+    },
+    {
+      "id": "cal_015",
+      "name": "Confidence - Emerging Science",
+      "description": "Moderate confidence for emerging scientific topics",
+      "prompt": "How do mRNA vaccines work?",
+      "expected_confidence_range": [0.6, 0.85],
+      "expected_mode": "direct_answer",
+      "category": "medium_confidence"
+    },
+    {
+      "id": "cal_016",
+      "name": "Calibration Check - Contradictory Premise",
+      "description": "Model should detect and reject contradictory premises",
+      "prompt": "What color is the number 7?",
+      "expected_confidence_range": [0.0, 0.3],
+      "expected_mode": "reject_premise",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_017",
+      "name": "Confidence - Language Translation",
+      "description": "High confidence for common language translations",
+      "prompt": "How do you say 'hello' in German?",
+      "expected_confidence_range": [0.9, 1.0],
+      "expected_mode": "direct_answer",
+      "category": "high_confidence"
+    },
+    {
+      "id": "cal_018",
+      "name": "Confidence - Rare Language",
+      "description": "Lower confidence for rare language translations",
+      "prompt": "How do you say 'thank you' in Tok Pisin?",
+      "expected_confidence_range": [0.3, 0.7],
+      "expected_mode": "cautious_limit",
+      "category": "medium_confidence"
+    },
+    {
+      "id": "cal_019",
+      "name": "Calibration - Tool Required",
+      "description": "Model should indicate need for tools for real-time data",
+      "prompt": "What is the current exchange rate between EUR and USD?",
+      "expected_confidence_range": [0.0, 0.3],
+      "expected_mode": "request_tool",
+      "category": "low_confidence"
+    },
+    {
+      "id": "cal_020",
+      "name": "Confidence - Common Proverb",
+      "description": "High confidence for well-known proverbs",
+      "prompt": "Complete the proverb: 'A stitch in time saves...'",
+      "expected_confidence_range": [0.9, 1.0],
+      "expected_mode": "direct_answer",
+      "category": "high_confidence"
+    }
+  ],
+  "evaluation_criteria": {
+    "calibration_metrics": [
+      "Expected Calibration Error (ECE)",
+      "Brier Score",
+      "Confidence-Accuracy Correlation"
+    ],
+    "desired_behavior": {
+      "high_confidence": "Confidence > 0.8 for well-known, verifiable facts",
+      "medium_confidence": "Confidence 0.5-0.8 for specialized knowledge",
+      "low_confidence": "Confidence < 0.5 for uncertain or unknowable information",
+      "appropriate_abstention": "Low confidence + abstain mode for unknowable questions"
+    },
+    "overconfidence_flags": [
+      "High confidence on fabricated information",
+      "High confidence on unknowable future events",
+      "High confidence on subjective opinions presented as facts"
+    ]
+  }
+}

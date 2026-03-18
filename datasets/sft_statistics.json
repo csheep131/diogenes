@@ -1,0 +1,29 @@
+{
+  "total_samples": 80000,
+  "category_distribution": {
+    "adversarial": 8204,
+    "ignorance": 11894,
+    "false_premise": 14432,
+    "multi_hop": 9438,
+    "shallow_trap": 11930,
+    "ambiguity": 9627,
+    "staleness": 8043,
+    "tool_required": 6432
+  },
+  "mode_distribution": {
+    "DIRECT_ANSWER": 8204,
+    "ABSTAIN": 11894,
+    "REJECT_PREMISE": 14432,
+    "PROBABILISTIC": 21368,
+    "CLARIFY": 9627,
+    "CAUTIOUS_LIMIT": 8043,
+    "REQUEST_TOOL": 6432
+  },
+  "risk_level_distribution": {
+    "high": 23881,
+    "critical": 8029,
+    "low": 10566,
+    "medium": 37524
+  },
+  "avg_confidence_target": 0.5532669125000043
+}

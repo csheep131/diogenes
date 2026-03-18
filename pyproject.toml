@@ -52,6 +52,14 @@ dev = [
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
 ]
+testing = [
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "gradio>=4.0.0",
+    "plotly>=5.18.0",
+    "pandas>=2.0.0",
+    "pyarrow>=14.0.0",  # For parquet export
+]
 unsloth = [
     "unsloth[cu121]>=2024.1",
 ]
@@ -62,6 +70,9 @@ axolotl = [
 [project.urls]
 Homepage = "https://github.com/diogenes/diogenes"
 Repository = "https://github.com/diogenes/diogenes"
+
+[project.scripts]
+diogenes-test = "diogenes.testing.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

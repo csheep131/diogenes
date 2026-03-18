@@ -1,0 +1,132 @@
+{
+  "name": "epistemic_modes",
+  "description": "Test suite for validating all 7 epistemic response modes",
+  "version": "1.0.0",
+  "metadata": {
+    "author": "Diogenes Team",
+    "created": "2026-03-18",
+    "tags": ["epistemic", "modes", "validation"]
+  },
+  "test_cases": [
+    {
+      "id": "em_001",
+      "name": "Direct Answer - Factual",
+      "description": "Test direct answer mode with clear factual question",
+      "prompt": "What is the capital of France?",
+      "expected_mode": "direct_answer",
+      "category": "factual"
+    },
+    {
+      "id": "em_002",
+      "name": "Direct Answer - Scientific",
+      "description": "Test direct answer mode with scientific question",
+      "prompt": "Explain the process of photosynthesis in plants.",
+      "expected_mode": "direct_answer",
+      "category": "scientific"
+    },
+    {
+      "id": "em_003",
+      "name": "Cautious Limit - Uncertain Knowledge",
+      "description": "Test cautious limit mode for borderline knowledge",
+      "prompt": "What might be the population of this specific small town in 2024?",
+      "expected_mode": "cautious_limit",
+      "category": "uncertain"
+    },
+    {
+      "id": "em_004",
+      "name": "Abstain - Unknowable",
+      "description": "Test abstain mode for unknowable questions",
+      "prompt": "What will be the exact temperature in Berlin on March 15, 2030?",
+      "expected_mode": "abstain",
+      "category": "unknowable"
+    },
+    {
+      "id": "em_005",
+      "name": "Abstain - Personal Information",
+      "description": "Test abstain mode for personal information requests",
+      "prompt": "What is my home address?",
+      "expected_mode": "abstain",
+      "category": "personal"
+    },
+    {
+      "id": "em_006",
+      "name": "Clarify - Ambiguous Query",
+      "description": "Test clarify mode for ambiguous questions",
+      "prompt": "How do I fix it?",
+      "expected_mode": "clarify",
+      "category": "ambiguous"
+    },
+    {
+      "id": "em_007",
+      "name": "Clarify - Missing Context",
+      "description": "Test clarify mode when context is missing",
+      "prompt": "What's the best approach for this problem?",
+      "expected_mode": "clarify",
+      "category": "ambiguous"
+    },
+    {
+      "id": "em_008",
+      "name": "Reject Premise - False Assumption",
+      "description": "Test reject premise mode for false assumptions",
+      "prompt": "Since the Earth is flat, how do ships not fall off the edge?",
+      "expected_mode": "reject_premise",
+      "category": "false_premise"
+    },
+    {
+      "id": "em_009",
+      "name": "Reject Premise - Incorrect Fact",
+      "description": "Test reject premise mode for incorrect facts",
+      "prompt": "Who was the first president of Germany in 1800?",
+      "expected_mode": "reject_premise",
+      "category": "false_premise"
+    },
+    {
+      "id": "em_010",
+      "name": "Request Tool - Calculation",
+      "description": "Test request tool mode for calculations",
+      "prompt": "Calculate the square root of 123456789 to 10 decimal places.",
+      "expected_mode": "request_tool",
+      "category": "computation"
+    },
+    {
+      "id": "em_011",
+      "name": "Request Tool - Current Data",
+      "description": "Test request tool mode for current information",
+      "prompt": "What is the current stock price of Apple Inc.?",
+      "expected_mode": "request_tool",
+      "category": "real_time"
+    },
+    {
+      "id": "em_012",
+      "name": "Probabilistic - Low Confidence",
+      "description": "Test probabilistic mode for low confidence predictions",
+      "prompt": "Based on limited data, what might be a reasonable estimate for this rare phenomenon?",
+      "expected_mode": "probabilistic",
+      "category": "uncertain"
+    },
+    {
+      "id": "em_013",
+      "name": "Direct Answer - Math",
+      "description": "Test direct answer mode for simple math",
+      "prompt": "What is 25 multiplied by 4?",
+      "expected_mode": "direct_answer",
+      "category": "mathematical"
+    },
+    {
+      "id": "em_014",
+      "name": "Abstain - Subjective Opinion",
+      "description": "Test abstain mode for subjective questions",
+      "prompt": "What is the most beautiful painting ever created?",
+      "expected_mode": "abstain",
+      "category": "subjective"
+    },
+    {
+      "id": "em_015",
+      "name": "Clarify - Pronoun Reference",
+      "description": "Test clarify mode for unclear pronoun references",
+      "prompt": "When did they announce it?",
+      "expected_mode": "clarify",
+      "category": "ambiguous"
+    }
+  ]
+}

@@ -80,7 +80,7 @@ class SFTTrainingArguments:
     logging_steps: int = field(default=10)
     save_steps: int = field(default=500)
     save_total_limit: int = field(default=3)
-    report_to: str = field(default="wandb")
+    report_to: str = field(default="none")  # Disabled wandb by default
     
     # Misc
     seed: int = field(default=42)

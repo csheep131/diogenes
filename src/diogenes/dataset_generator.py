@@ -360,7 +360,7 @@ class DatasetGenerator:
             answers = [
                 f"{prefix}Here's what I can tell you with confidence: [detailed accurate answer].",
                 f"{prefix}The answer is: [comprehensive response with facts].",
-            )
+            ]
             answer = random.choice(answers)
         elif mode == EpistemicMode.CAUTIOUS_LIMIT:
             answers = [

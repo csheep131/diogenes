@@ -1,0 +1,56 @@
+# Diogenes Testing Configuration
+# This file contains settings for the Diogenes Model Test Tool
+
+# Testing settings
+testing:
+  # Storage configuration
+  storage_path: "./test_results"
+  storage_backend: "jsonl"  # Options: "jsonl", "sqlite"
+  
+  # Parallel execution settings
+  max_workers: 4
+  
+  # Default test settings
+  default_temperature: 0.7
+  default_max_length: 512
+  default_top_p: 0.9
+  
+  # Report settings
+  report_output_dir: "./reports"
+  default_report_format: "html"  # Options: "html", "markdown", "json"
+  
+  # Include plots in reports
+  include_plots: true
+
+# Model settings (inherited from main config)
+model:
+  name: "Qwen/Qwen3-0.6B"
+  cache_dir: "./models"
+  use_4bit: false
+  trust_remote_code: true
+
+# Inference settings (inherited from main config)
+inference:
+  max_length: 512
+  temperature: 0.7
+  top_p: 0.9
+  do_sample: true
+
+# Test suite paths
+suites:
+  epistemic_modes: "./src/diogenes/testing/suites/epistemic_modes.json"
+  hallucination: "./src/diogenes/testing/suites/hallucination.json"
+  calibration: "./src/diogenes/testing/suites/calibration.json"
+
+# Web UI settings
+ui:
+  server_name: "0.0.0.0"
+  server_port: 7860
+  share: false
+  theme: "soft"
+
+# Logging settings
+logging:
+  level: "INFO"  # Options: "DEBUG", "INFO", "WARNING", "ERROR"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/testing.log"
