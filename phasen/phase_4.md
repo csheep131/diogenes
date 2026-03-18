@@ -1,15 +1,20 @@
-# Phase 4 – Calibration & Confidence Mapping
+# Phase 4 – Calibration Testing (RTX 3050 8GB)
 
-**Dauer:** Tag 5
+**Dauer:** Tag 9
 
 **Status:** ⏳ **GEPLANT**
 
+**Hardware:** NVIDIA RTX 3050 (8GB VRAM)
+
+**Testmodell:** Qwen2.5-3B-Instruct (DPO-Checkpoint)
+
 ## Ziele
 
-- [ ] Temperature Scaling implementieren
+- [ ] Temperature Scaling auf RTX 3050 implementieren
 - [ ] Confidence Mapping kalibrieren
 - [ ] Brier Score optimieren
 - [ ] Expected Calibration Error (ECE) minimieren
+- [ ] Calibration auf 3B-Modell validieren
 
 ## Aufgaben
 
@@ -57,11 +62,12 @@
 
 ## Metriken
 
-| Metrik | Ziel | Status |
-|--------|------|--------|
-| **ECE (Expected Calibration Error)** | < 0.05 (–40 %) | Primär |
+| Metrik | Ziel | Priorität |
+|--------|------|-----------|
+| **ECE (Expected Calibration Error)** | < 0.05 (–40 %) | Hoch |
 | **Brier Score** | Minimieren | Hoch |
 | **Reliability Diagram** | Nahe Diagonale | Mittel |
+| **Pass@1** | Stabil | **PRIMARY** |
 
 ## Calibration Methods
 
@@ -115,7 +121,7 @@ def calculate_confidence(logits, temperature=1.0):
     return confidence
 ```
 
-## Reliability Diagram
+### Reliability Diagram
 
 ```python
 import matplotlib.pyplot as plt
@@ -145,7 +151,54 @@ def plot_reliability_diagram(confidences, accuracies, n_bins=10):
     plt.ylabel('Accuracy')
     plt.legend()
     plt.title('Reliability Diagram')
+    plt.savefig('reliability_diagram.png')
     plt.show()
+```
+
+## Calibration auf RTX 3050
+
+### Vorbereitung
+
+```bash
+# Calibration Dataset vorbereiten
+python src/diogenes/dataset_generator.py \
+  --split calibration \
+  --size 5000 \
+  --output datasets/calibration_5k.jsonl
+```
+
+### Temperature Optimization
+
+```python
+# calibration_test.py
+from diogenes import load_model, TemperatureScaling, optimize_temperature
+import torch
+
+# DPO-Checkpoint laden
+model = load_model("models/dpo_3b_test")
+model.eval()
+
+# Calibration Dataset laden
+calibration_data = load_calibration_dataset("datasets/calibration_5k.jsonl")
+
+# Logits und Labels sammeln
+logits = []
+labels = []
+
+for sample in calibration_data:
+    output = model.generate(sample['input'])
+    logits.append(output.logits)
+    labels.append(sample['label'])
+
+logits = torch.stack(logits)
+labels = torch.tensor(labels)
+
+# Temperature optimieren
+optimal_T = optimize_temperature(logits, labels)
+print(f"Optimal Temperature: {optimal_T:.4f}")
+
+# Temperature Scaling anwenden
+temp_scaling = TemperatureScaling(temperature=optimal_T)
 ```
 
 ## Pass@1 Protection
@@ -155,35 +208,43 @@ def plot_reliability_diagram(confidences, accuracies, n_bins=10):
 ```python
 from diogenes import compute_core_reliability_metrics
 
-metrics = compute_core_reliability_metrics(
-    predictions=preds,
-    ground_truth=gt,
-    confidences=conf,
-    epistemic_modes=modes,
-    gold_modes=gold_modes,
-    is_knowable=knowable,
-    needs_tool=needs_tool,
-    tool_requests=tool_req,
-    false_premise_flags=fp_flags,
-    predicted_false_premise=pred_fp,
+# Vor Calibration
+baseline_metrics = compute_core_reliability_metrics(
+    model_path="models/dpo_3b_test",
+    eval_dataset="datasets/eval_holdout.jsonl",
 )
 
-print(f"ECE: {metrics.expected_calibration_error:.4f}")
-print(f"Brier Score: {metrics.brier_score:.4f}")
-print(f"Pass@1: {metrics.pass_at_1:.4f}")
+# Nach Calibration
+calibrated_metrics = compute_core_reliability_metrics(
+    model_path="models/dpo_3b_test",
+    eval_dataset="datasets/eval_holdout.jsonl",
+    temperature=optimal_T,
+)
+
+print(f"Vorher ECE: {baseline_metrics.expected_calibration_error:.4f}")
+print(f"Nachher ECE: {calibrated_metrics.expected_calibration_error:.4f}")
+print(f"Pass@1 vorher: {baseline_metrics.pass_at_1:.4f}")
+print(f"Pass@1 nachher: {calibrated_metrics.pass_at_1:.4f}")
+
+# Check: Pass@1 nicht verschlechtert
+if calibrated_metrics.pass_at_1 < baseline_metrics.pass_at_1 - 0.02:
+    print("⚠️  Warning: Pass@1 degraded during calibration!")
 ```
 
 **Achtung:** Calibration darf Pass@1 nicht verschlechtern!
 
 ## Nächste Schritte
 
-➡️ **Phase 5**: Full Evaluation & Confusion Matrix
+➡️ **Phase 5**: Full Evaluation Testing auf RTX 3050
 
 - Alle Benchmarks auswerten (TruthfulQA, HaluEval, WildBench)
 - Mode Confusion Matrix erstellen
 - Utility Score berechnen
 
+➡️ **Phase 7-C**: Finale Calibration auf H100 (nach lokaler Validierung)
+
 ## Referenzen
 
 - `src/diogenes/eval_metrics.py` – Core Reliability Metrics
+- `src/diogenes/pass1_protection.py` – Pass@1 Schutz
 - `docs/PASS1_GUARDRAILS.md` – Pass@1 Richtlinien

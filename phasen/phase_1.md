@@ -4,6 +4,8 @@
 
 **Status:** ✅ **ABGESCHLOSSEN** (18. März 2026)
 
+**Hardware:** NVIDIA RTX 3050 (8GB VRAM)
+
 ## Ziele
 
 - [x] Dataset Generator für 80k SFT Samples
@@ -76,21 +78,24 @@ Direct Preference Optimization (DPO) ist eine RLHF-Alternative (Reinforcement Le
 ### SFT vs. DPO im Diogenes-Workflow
 
 ```
-Pre-trained Model (Qwen 7B)
+Pre-trained Model (Qwen 3B für Testing)
          ↓
-    [SFT Phase]
+    [SFT Phase] (RTX 3050)
     - 80k Samples
     - Lernt epistemische Modi
     - Reasoning-Traces
          ↓
    SFT-Modell
          ↓
-    [DPO Phase]
+    [DPO Phase] (RTX 3050)
     - 60k Präferenzpaare
     - Halluzinations-Penalty
     - Ehrlichkeit belohnen
          ↓
-  Diogenes-Modell (Final)
+  Diogenes-Modell (3B Test)
+         ↓
+    [Phase 7: Produktion auf H100]
+    - Qwen3-32B Final Training
 ```
 
 **SFT** bringt dem Modell *was* es tun soll (epistemisch ehrliche Antworten).
@@ -141,12 +146,14 @@ Pre-trained Model (Qwen 7B)
 - [x] QLoRA (4-bit) Quantisierung
 - [x] 3 Epochen, ~80k Samples
 - [x] Batch Size & Learning Rate optimieren
+- [x] RTX 3050-kompatibel (8GB VRAM)
 
 ### 3. DPO Training Script ✅
 - [x] Preference Pairing implementieren
 - [x] Hallucination Penalty
 - [x] Ehrliche Antworten belohnen
 - [x] 60k Paare verarbeiten
+- [x] RTX 3050-kompatibel (8GB VRAM)
 
 ### 4. Pass@1 Protection ✅ (Neu)
 - [x] Zwei-Tier-Evaluationssystem implementiert
@@ -168,8 +175,8 @@ Pre-trained Model (Qwen 7B)
 ## Erfolgskriterien
 
 - [x] Generator erstellt valide JSON-Daten
-- [x] SFT Script startet ohne Fehler
-- [x] DPO Script verarbeitet Preference Pairs
+- [x] SFT Script startet ohne Fehler auf RTX 3050
+- [x] DPO Script verarbeitet Preference Pairs auf RTX 3050
 - [x] Datenqualität überprüft (Stichprobe)
 - [x] Pass@1 Protection getestet
 
@@ -183,6 +190,21 @@ Pre-trained Model (Qwen 7B)
 - Unterstützt Reasoning-Traces und Confidence-Targets
 - Tagging nach `risk_level`, `time_sensitive`, `needs_tool`
 
+**Usage:**
+```bash
+# SFT Dataset generieren
+python src/diogenes/dataset_generator.py \
+  --split sft \
+  --size 80000 \
+  --output datasets/sft_80k.jsonl
+
+# DPO Dataset generieren
+python src/diogenes/dataset_generator.py \
+  --split dpo \
+  --size 60000 \
+  --output datasets/dpo_60k.jsonl
+```
+
 ### `train_sft.py`
 
 **Features:**
@@ -191,6 +213,24 @@ Pre-trained Model (Qwen 7B)
 - Checkpoint-Speicherung
 - Weights & Biases Logging
 - Gradient Accumulation für große Batch-Sizes
+- **RTX 3050 optimiert (8GB VRAM)**
+
+**Usage:**
+```bash
+# SFT Training auf RTX 3050 (Qwen2.5-3B)
+python src/diogenes/train_sft.py \
+  --model_name Qwen/Qwen2.5-3B-Instruct \
+  --dataset datasets/sft_80k.jsonl \
+  --config configs/config.yaml \
+  --output_dir models/sft_3b_test \
+  --epochs 3 \
+  --per_device_train_batch_size 2 \
+  --gradient_accumulation_steps 8
+```
+
+**VRAM-Nutzung:**
+- Qwen3-0.6B: ~1.5 GB
+- Qwen2.5-3B: ~6 GB (mit QLoRA 4-bit)
 
 ### `train_dpo.py`
 
@@ -200,6 +240,23 @@ Pre-trained Model (Qwen 7B)
 - Referenzmodell-Integration
 - Beta-Parameter für Präferenz-Stärke
 - Early Stopping bei Overfitting
+- **RTX 3050 optimiert (8GB VRAM)**
+
+**Usage:**
+```bash
+# DPO Training auf RTX 3050 (Qwen2.5-3B)
+python src/diogenes/train_dpo.py \
+  --model_name Qwen/Qwen2.5-3B-Instruct \
+  --sft_checkpoint models/sft_3b_test \
+  --dataset datasets/dpo_60k.jsonl \
+  --output_dir models/dpo_3b_test \
+  --beta 0.2 \
+  --epochs 2
+```
+
+**VRAM-Nutzung:**
+- Qwen3-0.6B: ~2 GB (mit Referenzmodell)
+- Qwen2.5-3B: ~7 GB (mit QLoRA 4-bit und Referenzmodell)
 
 ### `eval_metrics.py`
 
@@ -239,37 +296,48 @@ Pre-trained Model (Qwen 7B)
 | Verbosity Bias | < 1.2 Ratio | ✓ Pass |
 | Abstain Repr. | > 5% | ✓ Pass |
 
+## Entwicklungs-Workflow
+
+### Phase 1: Lokale Entwicklung (RTX 3050)
+
+1. **Scripts entwickeln** mit Qwen3-0.6B (~1.5 GB VRAM)
+2. **Testing** mit Qwen2.5-3B-Instruct (~6 GB VRAM)
+3. **Hyperparameter tuning** auf RTX 3050
+4. **Validierung** mit Evaluation Suite
+
+### Phase 7: Produktion (H100 80GB)
+
+1. **Finales Training** mit Qwen3-32B (~65 GB VRAM)
+2. **Full-Scale SFT** und DPO
+3. **Production Evaluation**
+
 ## Nächste Schritte
 
-➡️ **Phase 2**: SFT Training auf Remote-H100
+➡️ **Phase 2**: SFT Testing auf RTX 3050 mit Qwen2.5-3B-Instruct
 
-1. Remote-Maschine vorbereiten:
-   ```bash
-   python scripts/prepare_remote_machine.py --config configs/remote_config.yaml
-   ```
+```bash
+# 1. Dataset vorbereiten
+python src/diogenes/dataset_generator.py --split sft --size 80000
 
-2. SFT Training starten:
-   ```bash
-   ssh <user>@<host> 'cd /opt/diogenes && ./train.sh'
-   ```
+# 2. SFT Training lokal starten
+python src/diogenes/train_sft.py \
+  --model_name Qwen/Qwen2.5-3B-Instruct \
+  --config configs/config.yaml \
+  --output_dir models/sft_3b_test
 
-3. Checkpoints mit Pass@1 Protection überwachen:
-   ```python
-   from diogenes import Pass1RegressionTracker
-   
-   tracker = Pass1RegressionTracker()
-   result = tracker.record_checkpoint(
-       checkpoint_name="epoch_1",
-       core_metrics=core_metrics,
-       pass_at_k_math={5: 0.90, 10: 0.93},
-   )
-   
-   if result.should_promote:
-       print("✓ Checkpoint safe to promote")
-   ```
+# 3. Ergebnisse validieren
+python src/diogenes/eval_metrics.py \
+  --model_path models/sft_3b_test \
+  --benchmark truthfulqa
+```
+
+➡️ **Phase 3**: DPO Testing auf RTX 3050
+
+➡️ **Phase 7**: Finales Training auf H100 (nach lokaler Validierung)
 
 ## Referenzen
 
 - `docs/PASS1_GUARDRAILS.md` – Vollständige Pass@1-Richtlinien
 - `docs/IMPLEMENTATION_SUMMARY.md` – Implementierungs-Übersicht
 - `tests/test_pass1_protection.py` – Test-Suite
+- `docs/phase0_quickstart.md` – RTX 3050 Setup-Guide

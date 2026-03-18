@@ -1,16 +1,21 @@
-# Phase 5 – Full Evaluation & Confusion Matrix
+# Phase 5 – Full Evaluation Testing (RTX 3050 8GB)
 
-**Dauer:** Tag 6
+**Dauer:** Tag 10–11
 
 **Status:** ⏳ **GEPLANT**
 
+**Hardware:** NVIDIA RTX 3050 (8GB VRAM)
+
+**Testmodell:** Qwen2.5-3B-Instruct (kalibriert)
+
 ## Ziele
 
-- [ ] Primäre Benchmarks auswerten
+- [ ] Primäre Benchmarks auf RTX 3050 auswerten
 - [ ] Sekundäre Benchmarks auswerten
 - [ ] Eigene Epistemic Suite testen
 - [ ] Mode Confusion Matrix erstellen
 - [ ] Utility Score berechnen
+- [ ] Pass@1 Protection validieren
 
 ## Aufgaben
 
@@ -54,6 +59,7 @@ confident_wrong       -3.0
 - [ ] Alle Metriken sammeln
 - [ ] Mit Baseline vergleichen
 - [ ] Schwachstellen identifizieren
+- [ ] Go/No-Go für Phase 7 entscheiden
 
 ## Deliverables
 
@@ -62,17 +68,47 @@ confident_wrong       -3.0
 - [ ] Mode Confusion Matrix
 - [ ] Utility Score Berechnung
 - [ ] Vollständiger Evaluationsbericht
+- [ ] Go/No-Go Empfehlung für Phase 7
 
 ## Erfolgskriterien
 
-| Metrik | Ziel | Priorität |
-|--------|------|-----------|
+| Metrik | Ziel | Status |
+|--------|------|--------|
 | **TruthfulQA** | +8–15 % | Hoch |
 | **HaluEval** | –20–30 % | Hoch |
 | **ECE** | < 0.05 (–40 %) | Hoch |
 | **Abstention AUROC** | +15 % | Mittel |
 | **Utility Score** | > Baseline | Hoch |
 | **Pass@1** | Stabil oder verbessert | **PRIMARY** |
+
+## Evaluation auf RTX 3050
+
+### Benchmark Suite ausführen
+
+```bash
+# Vollständige Evaluation
+python src/diogenes/eval_metrics.py \
+  --model_path models/dpo_3b_test_calibrated \
+  --benchmarks truthfulqa haluEval wildbench gpqa livebench \
+  --output_dir results/evaluation_3b \
+  --batch_size 4
+```
+
+### Einzelne Benchmarks
+
+```bash
+# TruthfulQA
+python src/diogenes/eval_metrics.py \
+  --model_path models/dpo_3b_test_calibrated \
+  --benchmark truthfulqa \
+  --output results/truthfulqa_3b.json
+
+# HaluEval
+python src/diogenes/eval_metrics.py \
+  --model_path models/dpo_3b_test_calibrated \
+  --benchmark haluEval \
+  --output results/halueval_3b.json
+```
 
 ## Mode Confusion Matrix
 
@@ -96,10 +132,11 @@ def plot_mode_confusion_matrix(gold_modes, predicted_modes, class_names):
                 xticklabels=class_names, yticklabels=class_names)
     plt.xlabel('Predicted Mode')
     plt.ylabel('True Mode')
-    plt.title('Epistemic Mode Confusion Matrix')
+    plt.title('Epistemic Mode Confusion Matrix (RTX 3050 Test)')
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0)
     plt.tight_layout()
+    plt.savefig('results/mode_confusion_matrix_3b.png')
     plt.show()
     
     # Analyse
@@ -109,12 +146,14 @@ def plot_mode_confusion_matrix(gold_modes, predicted_modes, class_names):
     print("Accuracy per Mode:")
     for i, name in enumerate(class_names):
         print(f"  {name}: {accuracy_per_class[i]:.2%}")
+    
+    return accuracy_per_class
 ```
 
 ## Utility Score Berechnung
 
 ```python
-def calculate_utility_score(predictions, ground_truth, epistemic_modes, gold_modes):
+def calculate_utility_score(predictions, ground_truth, epistemic_modes, gold_modes, is_knowable):
     """
     Berechnet gewichteten Utility Score basierend auf Korrektheit und Modus.
     """
@@ -166,6 +205,7 @@ def calculate_utility_score(predictions, ground_truth, epistemic_modes, gold_mod
 ```python
 from diogenes import run_pass1_protection_test
 
+# Vollständigen Pass@1 Protection Test durchführen
 result = run_pass1_protection_test(
     predictions=predictions,
     ground_truth=ground_truth,
@@ -177,33 +217,87 @@ result = run_pass1_protection_test(
     tool_requests=tool_requests,
     false_premise_flags=false_premise_flags,
     predicted_false_premise=predicted_false_premise,
-    baseline_pass_at_1=0.75,
+    baseline_pass_at_1=0.75,  # Von Phase 0/1
     baseline_pass_at_k=0.90,
     math_predictions=math_preds,
     math_ground_truth=math_gt,
     k=5,
 )
 
+print("=== Pass@1 Protection Report ===")
 print(f"Pass@1: {result.core_metrics.pass_at_1:.4f}")
 print(f"ECE: {result.core_metrics.expected_calibration_error:.4f}")
 print(f"Hallucination Rate: {result.core_metrics.hallucination_rate:.4f}")
 
 if result.is_regression:
-    print(f"⚠️  REGRESSION DETECTED: {result.regression_severity}")
+    print(f"\n⚠️  REGRESSION DETECTED: {result.regression_severity}")
     print(f"Details: {result.regression_details}")
     print(f"Recommendation: {result.recommendation}")
-    print("❌ DO NOT PROMOTE this checkpoint")
+    print("\n❌ DO NOT PROMOTE to Phase 7")
+    print("→ Fix issues in Phase 2-6 first")
 else:
-    print("✓ No regression detected - safe to promote")
+    print("\n✓ No regression detected")
+    print("→ Ready for Phase 7 (H100 Production)")
+```
+
+## Go/No-Go Entscheidung für Phase 7
+
+### Go-Kriterien
+
+- [ ] TruthfulQA: +8–15 % Verbesserung
+- [ ] HaluEval: –20–30 % Halluzinationen
+- [ ] ECE: < 0.05 (–40 %)
+- [ ] Pass@1: Stabil oder verbessert
+- [ ] Utility Score: > Baseline
+
+### No-Go-Kriterien
+
+- [ ] Pass@1 Regression > 2%
+- [ ] Halluzinationsrate erhöht
+- [ ] Over-Abstention (Utility Score < 0)
+- [ ] Kritische Modus-Verwechslungen
+
+## Evaluationsbericht
+
+### Vorlage
+
+```markdown
+# Evaluationsbericht – Phase 5 (RTX 3050)
+
+**Modell:** Qwen2.5-3B-Instruct (DPO-kalibriert)
+**Datum:** [DATE]
+**Hardware:** NVIDIA RTX 3050 (8GB)
+
+## Zusammenfassung
+
+| Metrik | Baseline | Ergebnis | Δ |
+|--------|----------|----------|---|
+| TruthfulQA | [X] | [Y] | [+Z%] |
+| HaluEval | [X] | [Y] | [-Z%] |
+| ECE | [X] | [Y] | [-Z%] |
+| Pass@1 | [X] | [Y] | [+Z%] |
+| Utility Score | [X] | [Y] | [+Z] |
+
+## Empfehlung
+
+☐ GO für Phase 7
+☐ NO-GO – folgende Issues müssen behoben werden:
+  - [Issue 1]
+  - [Issue 2]
 ```
 
 ## Nächste Schritte
 
-➡️ **Phase 6**: Red Teaming & Schwächen fixen
+➡️ **Bei GO:** Phase 6 – Red Teaming Testing auf RTX 3050
 
-- Adversarial Testing durchführen
-- Schwachstellen analysieren
-- Kritische Fehler beheben
+➡️ **Bei NO-GO:** Zurück zu Phase 2-5
+
+- Issues analysieren
+- Hyperparameter nachjustieren
+- Dataset erweitern
+- Erneut evaluieren
+
+➡️ **Nach erfolgreichem Phase 5-6:** Phase 7 – Produktion auf H100
 
 ## Referenzen
 

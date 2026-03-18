@@ -364,16 +364,19 @@ confident_wrong       -3.0
 
 ## 14. KOMPLETTE ROADMAP
 
-| Phase | Tage | Aufgabe | Status |
-|-------|------|---------|--------|
-| 0 | Tag 0 | Repo + Infrastruktur + Modelle laden | ✅ **ABGESCHLOSSEN** |
-| 1 | Tag 1–2 | Dataset Generator + SFT + DPO erstellen | ✅ **ABGESCHLOSSEN** |
-| 2 | Tag 3 | SFT Training | 🔄 **BEREIT FÜR START** |
-| 3 | Tag 4 | DPO Training | ⏳ **GEPLANT** |
-| 4 | Tag 5 | Calibration + Confidence Mapping | ⏳ **GEPLANT** |
-| 5 | Tag 6 | Full Evaluation + Confusion Matrix | ⏳ **GEPLANT** |
-| 6 | Tag 7 | Red Teaming + Schwächen fixen | ⏳ **GEPLANT** |
-| 7 | Woche 2+ | Iterationen + Ablation-Vergleich | ⏳ **GEPLANT** |
+| Phase | Hardware | Tage | Aufgabe | Status |
+|-------|----------|------|---------|--------|
+| 0 | RTX 3050 | Tag 0 | Repo + Infrastruktur + Pipeline | ✅ **ABGESCHLOSSEN** |
+| 1 | RTX 3050 | Tag 1–2 | Dataset Generator + Scripts | ✅ **ABGESCHLOSSEN** |
+| 2 | RTX 3050 | Tag 3–5 | SFT Testing (3B Modell) | 🔄 **IN PROGRESS** |
+| 3 | RTX 3050 | Tag 6–8 | DPO Testing (3B Modell) | ⏳ **GEPLANT** |
+| 4 | RTX 3050 | Tag 9 | Calibration Testing | ⏳ **GEPLANT** |
+| 5 | RTX 3050 | Tag 10–11 | Full Evaluation (3B Modell) | ⏳ **GEPLANT** |
+| 6 | RTX 3050 | Tag 12–13 | Red Teaming (3B Modell) | ⏳ **GEPLANT** |
+| 7-A | H100 | Tag 14 | **Final SFT (32B)** | ⏳ **GEPLANT** |
+| 7-B | H100 | Tag 15 | **Final DPO (32B)** | ⏳ **GEPLANT** |
+| 7-C | H100 | Tag 16 | **Final Calibration (32B)** | ⏳ **GEPLANT** |
+| 7-D | H100 | Tag 17 | **Final Evaluation (32B)** | ⏳ **GEPLANT** |
 
 ---
 
@@ -411,7 +414,7 @@ Damit wird Qwen3-32B zum verlässlichsten 32B-Wissensassistenten für kritische 
 
 ---
 
-## 18. NÄCHSTE SCHRITTE (sofort möglich)
+## 18. NÄCHSTE SCHRITTE
 
 ### ✅ Bereits implementiert:
 
@@ -422,30 +425,74 @@ Damit wird Qwen3-32B zum verlässlichsten 32B-Wissensassistenten für kritische 
 - `pass1_protection.py` – Regression Detection + DPO Audit
 - `docs/PASS1_GUARDRAILS.md` – Produkt-Richtlinien
 
-### ➡️ Jetzt ausführen:
+### ➡️ Jetzt ausführen (RTX 3050 8GB):
 
-1. **Remote-Maschine vorbereiten**
+**Phase 2: SFT Testing mit Qwen2.5-3B-Instruct**
+
+1. **Dataset vorbereiten:**
+   ```bash
+   python src/diogenes/dataset_generator.py --split sft --size 80000
+   ```
+
+2. **SFT Training lokal starten:**
+   ```bash
+   python src/diogenes/train_sft.py \
+     --model_name Qwen/Qwen2.5-3B-Instruct \
+     --config configs/config.yaml \
+     --output_dir models/sft_3b_test
+   ```
+
+3. **Ergebnisse validieren:**
+   ```bash
+   python src/diogenes/eval_metrics.py \
+     --model_path models/sft_3b_test \
+     --benchmark truthfulqa
+   ```
+
+**Phase 3: DPO Testing**
+
+1. **DPO-Dataset generieren:**
+   ```bash
+   python src/diogenes/dataset_generator.py --split dpo --size 60000
+   ```
+
+2. **DPO-Audit durchführen:**
+   ```python
+   from diogenes import check_dpo_for_prompt_interference
+   dpo_pairs = load_dpo_dataset("datasets/dpo_60k.jsonl")
+   audit = check_dpo_for_prompt_interference(dpo_pairs)
+   ```
+
+3. **DPO Training lokal:**
+   ```bash
+   python src/diogenes/train_dpo.py \
+     --model_name Qwen/Qwen2.5-3B-Instruct \
+     --sft_checkpoint models/sft_3b_test \
+     --output_dir models/dpo_3b_test
+   ```
+
+### ➡️ Nach lokaler Validierung (H100 80GB):
+
+**Phase 7: Produktionstraining mit Qwen3-32B**
+
+1. **Remote-Maschine vorbereiten:**
    ```bash
    python scripts/prepare_remote_machine.py --config configs/remote_config.yaml
    ```
 
-2. **SFT Training starten (Phase 2)**
+2. **SFT Training starten:**
    ```bash
-   ssh <user>@<host> 'cd /opt/diogenes && ./train.sh'
+   ssh <user>@<host> 'cd /opt/diogenes && ./train_sft_final.sh'
    ```
 
-3. **DPO Training vorbereiten (Phase 3)**
-   - DPO-Dataset generieren
-   - DPO-Audit durchführen
-   - Training scripten
-
-4. **Evaluation pipeline integrieren**
-   - Pass@1 Regression Tracker einbinden
-   - Core Metrics in Checkpoint-Callback
+3. **DPO Training starten:**
+   ```bash
+   ssh <user>@<host> 'cd /opt/diogenes && ./train_dpo_final.sh'
+   ```
 
 ---
 
-## 19. PASS@1 SCHUTZ (Neu in v4)
+## 19. PASS@1 SCHUTZ (Neu in v5)
 
 ### Kernprinzip
 
@@ -478,5 +525,35 @@ Pass@k (k>1) darf ausschließlich für Mathematik/Code zu Monitoring-Zwecken ver
 | **Stabil** | ±1% | Beliebig | ✓ Sicher |
 
 Siehe `docs/PASS1_GUARDRAILS.md` für vollständige Richtlinien.
+
+---
+
+## 20. HARDWARE-REQUIREMENTS
+
+### Lokale Entwicklung (RTX 3050 8GB)
+
+| Komponente | Minimum | Empfohlen |
+|------------|---------|-----------|
+| **GPU** | NVIDIA 4GB VRAM | NVIDIA 8GB VRAM (RTX 3050/3060) |
+| **RAM** | 8 GB | 16 GB |
+| **Speicher** | 10 GB frei | 50 GB frei |
+| **CUDA** | 11.8+ | 12.1+ |
+
+**Unterstützte Modelle für Testing:**
+- Qwen3-0.6B (~1.2 GB) – Pipeline-Validierung
+- Qwen3-1.7B (~3.5 GB) – Erste fachliche Tests
+- Qwen2.5-3B-Instruct (~6 GB) – Realistische Tests
+
+### Produktion (H100 80GB)
+
+| Komponente | Anforderung |
+|------------|-------------|
+| **GPU** | NVIDIA H100 80GB |
+| **RAM** | 64 GB+ |
+| **Speicher** | 200 GB+ für Checkpoints |
+| **CUDA** | 12.1+ |
+
+**Zielmodell:**
+- Qwen3-32B (~65 GB mit QLoRA 4-bit)
 
 ---
