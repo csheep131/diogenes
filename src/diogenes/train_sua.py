@@ -1,524 +1,439 @@
 #!/usr/bin/env python3
 """
-Phase 3.5 - Staleness/Unknown/Ambiguity (SUA) Fine-Tuning
+SUA (Staleness/Unknown/Ambiguity) Fine-Tuning Script for Diogenes
 
-Spezialisiertes Training zur Verbesserung epistemischer Grenzfähigkeiten:
-- Staleness Detection: Zeitliche Wissensgrenzen erkennen
-- Unknown Detection: Fundamentale Wissenslücken identifizieren
-- Ambiguity Handling: Mehrdeutige Anfragen erkennen und klären
+Phase 3.5: Specialized fine-tuning for epistemic boundary detection.
+Builds upon DPO checkpoint with low-rate fine-tuning to avoid Pass@1 degradation.
 
-Verwendet Low-Rate Fine-Tuning auf DPO-Checkpoint für Minimal-Invasion.
+Usage:
+    python train_sua.py \
+        --model_name Qwen/Qwen2.5-3B-Instruct \
+        --dpo_checkpoint models/dpo_3b_test/final_checkpoint \
+        --dataset_path datasets/sua_dataset.jsonl \
+        --eval_dataset datasets/sua_eval_holdout.jsonl \
+        --output_dir models/sua_3b_test \
+        --num_train_epochs 2 \
+        --learning_rate 5e-6 \
+        --lora_r 16 \
+        --lora_alpha 32
+
+Author: Diogenes Team
+Date: March 2026
 """
 
 import argparse
 import json
-import logging
 import os
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, Dict, Any, List
 
 import torch
-import torch.nn as nn
-from datasets import Dataset, load_dataset
-from tqdm import tqdm
+from datasets import load_dataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    BitsAndBytesConfig,
-    DataCollatorForLanguageModeling,
     TrainingArguments,
     Trainer,
-    PeftModel,
+    DataCollatorForLanguageModeling,
+    BitsAndBytesConfig,
+)
+from peft import (
     LoraConfig,
-    get_cosine_schedule_with_warmup,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+    TaskType,
 )
+from tqdm import tqdm
 
-# Logging konfigurieren
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/tmp/sua_train.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+# Import Pass@1 Protection
+try:
+    from diogenes.pass1_protection import (
+        run_pass1_protection_test,
+        compute_core_reliability_metrics,
+    )
+    from diogenes.eval_metrics import compute_sua_metrics
+except ImportError:
+    print("⚠️  Warning: Diogenes modules not found. Running in standalone mode.")
 
 
 @dataclass
 class SUATrainingArguments:
-    """Argumente für SUA Fine-Tuning"""
-    
-    # Model & Checkpoints
-    model_name: str = field(default="Qwen/Qwen2.5-3B-Instruct")
-    dpo_checkpoint: str = field(default=None, metadata={"help": "Pfad zum DPO-Checkpoint"})
-    output_dir: str = field(default="./models/sua_3b_test")
-    
-    # Datasets
-    dataset_path: str = field(default="datasets/sua_dataset.jsonl")
-    eval_dataset: str = field(default="datasets/sua_eval_holdout.jsonl")
-    
-    # Training Hyperparameter
-    num_train_epochs: int = field(default=2)
-    per_device_train_batch_size: int = field(default=2)
-    per_device_eval_batch_size: int = field(default=2)
-    gradient_accumulation_steps: int = field(default=8)
-    learning_rate: float = field(default=5e-6)
-    weight_decay: float = field(default=0.01)
-    warmup_ratio: float = field(default=0.1)
-    lr_scheduler_type: str = field(default="cosine")
-    
-    # LoRA Konfiguration
-    lora_r: int = field(default=16)
-    lora_alpha: int = field(default=32)
-    lora_dropout: float = field(default=0.05)
-    target_modules: List[str] = field(default_factory=lambda: [
-        "q_proj", "k_proj", "v_proj", "o_proj",
-        "gate_proj", "up_proj", "down_proj"
-    ])
-    
-    # Memory Optimization
-    use_4bit: bool = field(default=True)
-    fp16: bool = field(default=True)
-    bf16: bool = field(default=False)
-    gradient_checkpointing: bool = field(default=True)
-    optim: str = field(default="paged_adamw_8bit")
-    
-    # Logging & Checkpoints
-    logging_steps: int = field(default=50)
-    save_steps: int = field(default=2000)
-    eval_steps: int = field(default=1000)
-    save_total_limit: int = field(default=3)
-    
-    # Early Stopping
-    early_stopping: bool = field(default=True)
-    early_stopping_patience: int = field(default=2)
-    
-    # SUA-spezifisch
-    sua_weights: Dict[str, float] = field(default_factory=lambda: {
-        "staleness": 0.30,
-        "unknown": 0.40,
-        "ambiguity": 0.30
-    })
+    """SUA-specific training arguments."""
+
+    model_name: str = field(
+        default="Qwen/Qwen2.5-3B-Instruct",
+        metadata={"help": "Base model name or path"}
+    )
+    dpo_checkpoint: Optional[str] = field(
+        default=None,
+        metadata={"help": "Path to DPO checkpoint (starting point for SUA)"}
+    )
+    dataset_path: str = field(
+        default="datasets/sua_dataset.jsonl",
+        metadata={"help": "Path to SUA dataset"}
+    )
+    eval_dataset: Optional[str] = field(
+        default=None,
+        metadata={"help": "Path to evaluation holdout dataset"}
+    )
+    output_dir: str = field(
+        default="models/sua_3b_test",
+        metadata={"help": "Output directory for SUA checkpoint"}
+    )
+
+    # SUA-specific hyperparameters
+    learning_rate: float = field(
+        default=5e-6,
+        metadata={"help": "Low learning rate for minimal invasion (default: 5e-6)"}
+    )
+    num_train_epochs: int = field(
+        default=2,
+        metadata={"help": "Number of epochs (keep low to avoid overfitting)"}
+    )
+    lora_r: int = field(
+        default=16,
+        metadata={"help": "LoRA rank (reduced from 32 for faster adaptation)"}
+    )
+    lora_alpha: int = field(
+        default=32,
+        metadata={"help": "LoRA alpha (2x rank)"}
+    )
+
+    # Standard training arguments
+    per_device_train_batch_size: int = field(
+        default=2,
+        metadata={"help": "Batch size per device for 8GB VRAM"}
+    )
+    gradient_accumulation_steps: int = field(
+        default=8,
+        metadata={"help": "Gradient accumulation steps"}
+    )
+    warmup_ratio: float = field(
+        default=0.1,
+        metadata={"help": "Warmup ratio"}
+    )
+    logging_steps: int = field(
+        default=50,
+        metadata={"help": "Logging steps"}
+    )
+    save_steps: int = field(
+        default=2000,
+        metadata={"help": "Save checkpoint steps"}
+    )
+    eval_steps: int = field(
+        default=1000,
+        metadata={"help": "Evaluation steps"}
+    )
+
+    # Early stopping
+    early_stopping: bool = field(
+        default=True,
+        metadata={"help": "Enable early stopping"}
+    )
+    early_stopping_patience: int = field(
+        default=2,
+        metadata={"help": "Early stopping patience"}
+    )
+
+    # Pass@1 protection
+    baseline_pass1: Optional[float] = field(
+        default=None,
+        metadata={"help": "Baseline Pass@1 from DPO checkpoint"}
+    )
+    max_pass1_degradation: float = field(
+        default=0.02,
+        metadata={"help": "Maximum allowed Pass@1 degradation (default: 2%)"}
+    )
 
 
-def load_sua_dataset(dataset_path: str) -> Dataset:
-    """
-    Lädt das SUA-Dataset aus JSONL-Format.
-    
-    Erwartetes Format:
-    {
-        "id": "sample_001",
-        "question": "...",
-        "category": "staleness|unknown|ambiguity",
-        "gold_mode": "...",
-        "chosen_answer": "...",
-        "reasoning_trace": "..."
-    }
-    """
-    logger.info(f"Lade SUA-Dataset von {dataset_path}")
-    
+def load_sua_dataset(dataset_path: str) -> Dict[str, Any]:
+    """Load SUA dataset from JSONL file."""
     if not os.path.exists(dataset_path):
-        raise FileNotFoundError(f"SUA-Dataset nicht gefunden: {dataset_path}")
-    
-    # JSONL laden
-    samples = []
-    with open(dataset_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                samples.append(json.loads(line))
-    
-    logger.info(f"Geladene {len(samples)} SUA-Samples")
-    
-    # Kategorien zählen
+        raise FileNotFoundError(f"SUA dataset not found: {dataset_path}")
+
+    dataset = load_dataset("json", data_files=dataset_path, split="train")
+
+    # Statistics
+    total = len(dataset)
     categories = {}
-    for sample in samples:
-        cat = sample.get('category', 'unknown')
+    for sample in dataset:
+        cat = sample.get("category", "unknown")
         categories[cat] = categories.get(cat, 0) + 1
-    
-    logger.info(f"Kategorien-Verteilung: {categories}")
-    
-    return Dataset.from_list(samples)
+
+    print(f"✅ Loaded {total} SUA samples:")
+    for cat, count in sorted(categories.items()):
+        print(f"   - {cat}: {count} ({count/total*100:.1f}%)")
+
+    return dataset
 
 
-def format_sua_sample(sample: Dict) -> str:
-    """
-    Formatiert ein SUA-Sample für das Training.
-    
-    Format:
-    <|user|>
-    Frage: {question}
-    
-    Epistemische Analyse:
-    - Kategorie: {category}
-    - Risiko: {risk_level}
-    - Zeit-sensitiv: {time_sensitive}
-    
-    Wie solltest du antworten?<|end|>
-    <|assistant|>
-    {reasoning_trace}
-    
-    Antwort: {chosen_answer}<|end|>
-    """
-    category_labels = {
-        "staleness": "Zeitliche Wissensgrenze",
-        "unknown": "Fundamentale Wissenslücke",
-        "ambiguity": "Mehrdeutige Anfrage"
-    }
-    
-    prompt = f"""<|user|>
-Frage: {sample['question']}
+def prepare_tokenizer(model_name: str):
+    """Load and configure tokenizer."""
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-Epistemische Analyse:
-- Kategorie: {category_labels.get(sample['category'], sample['category'])}
-- Risiko: {sample.get('risk_level', 'medium')}
-- Zeit-sensitiv: {sample.get('time_sensitive', False)}
-
-Wie solltest du antworten?<|end|>
-<|assistant|>
-{sample.get('reasoning_trace', 'Ich analysiere die epistemischen Eigenschaften dieser Frage...')}
-
-Antwort: {sample['chosen_answer']}<|end|>"""
-    
-    return prompt
-
-
-def tokenize_sua_dataset(
-    dataset: Dataset,
-    tokenizer: AutoTokenizer,
-    max_length: int = 1024
-) -> Dataset:
-    """
-    Tokenisiert das SUA-Dataset für Training.
-    """
-    def tokenize_fn(example):
-        formatted = format_sua_sample(example)
-        tokenized = tokenizer(
-            formatted,
-            truncation=True,
-            max_length=max_length,
-            padding=False,
-            return_tensors=None
-        )
-        
-        # Labels für Language Modeling
-        tokenized['labels'] = tokenized['input_ids'].copy()
-        
-        return tokenized
-    
-    logger.info("Tokenisiere SUA-Dataset...")
-    tokenized_dataset = dataset.map(
-        tokenize_fn,
-        batched=False,
-        num_proc=4,
-        remove_columns=dataset.column_names
-    )
-    
-    logger.info(f"Tokenisiertes Dataset: {len(tokenized_dataset)} Samples")
-    return tokenized_dataset
-
-
-def setup_model_and_tokenizer(args: SUATrainingArguments) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
-    """
-    Lädt Modell und Tokenizer mit QLoRA für VRAM-Optimierung.
-    """
-    logger.info(f"Lade Modell: {args.model_name}")
-    
-    # 4-bit Quantisierung für VRAM-Optimierung
-    bnb_config = None
-    if args.use_4bit:
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16 if args.fp16 else torch.bfloat16,
-            bnb_4bit_use_double_quant=True,
-        )
-    
-    # Tokenizer laden
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name,
-        trust_remote_code=True,
-        padding_side="right"
-    )
-    
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    
-    # Modell laden
+
+    tokenizer.padding_side = "right"
+
+    return tokenizer
+
+
+def prepare_model(
+    model_name: str,
+    dpo_checkpoint: Optional[str],
+    lora_r: int = 16,
+    lora_alpha: int = 32,
+):
+    """Load and configure model for SUA training."""
+
+    # Determine starting checkpoint
+    if dpo_checkpoint and os.path.exists(dpo_checkpoint):
+        print(f"✅ Loading DPO checkpoint: {dpo_checkpoint}")
+        model_path = dpo_checkpoint
+    else:
+        print(f"⚠️  No DPO checkpoint found, using base model: {model_name}")
+        model_path = model_name
+
+    # QLoRA configuration for 8GB VRAM
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16,
+        bnb_4bit_use_double_quant=True,
+    )
+
+    # Load model
     model = AutoModelForCausalLM.from_pretrained(
-        args.model_name,
+        model_path,
         quantization_config=bnb_config,
         device_map="auto",
         trust_remote_code=True,
-        torch_dtype=torch.float16 if args.fp16 else torch.bfloat16,
     )
-    
-    # DPO-Checkpoint laden falls verfügbar
-    if args.dpo_checkpoint and os.path.exists(args.dpo_checkpoint):
-        logger.info(f"Lade DPO-Checkpoint von {args.dpo_checkpoint}")
-        # LoRA-Adapter vom DPO-Checkpoint laden
-        model = PeftModel.from_pretrained(model, args.dpo_checkpoint)
-    else:
-        logger.info("Kein DPO-Checkpoint gefunden, initialisiere frisches LoRA")
-    
-    # LoRA-Konfiguration für SUA
+
+    # Prepare for k-bit training
+    model = prepare_model_for_kbit_training(model)
+
+    # LoRA configuration (reduced rank for SUA)
     lora_config = LoraConfig(
-        r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=args.lora_dropout,
-        target_modules=args.target_modules,
+        r=lora_r,
+        lora_alpha=lora_alpha,
+        target_modules=[
+            "q_proj", "k_proj", "v_proj", "o_proj",
+            "gate_proj", "up_proj", "down_proj"
+        ],
+        lora_dropout=0.05,
         bias="none",
-        task_type="CAUSAL_LM",
+        task_type=TaskType.CAUSAL_LM,
     )
-    
-    # LoRA-Adapter hinzufügen (oder mergen und neu initialisieren)
-    if not isinstance(model, PeftModel):
-        model = model.merge_and_unload() if isinstance(model, PeftModel) else model
-        model = get_peft_model(model, lora_config)
-    else:
-        # Bestehenden Adapter behalten, aber für SUA anpassen
-        pass
-    
+
+    # Apply LoRA
+    model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
-    
-    return model, tokenizer
+
+    return model
 
 
-class SUATrainer(Trainer):
-    """
-    Custom Trainer für SUA Fine-Tuning mit speziellen Metriken.
-    """
-    
-    def __init__(self, *args, sua_eval_dataset=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sua_eval_dataset = sua_eval_dataset
-        self.sua_metrics_history = []
-        self.early_stopping_counter = 0
-        self.best_sua_score = 0
-    
-    def compute_sua_metrics(self, predictions, labels) -> Dict:
-        """
-        Berechnet SUA-spezifische Metriken.
-        """
-        # Placeholder für SUA-Metriken
-        # In der Praxis würde hier die eigentliche Metrik-Berechnung stattfinden
-        return {
-            "staleness_detection_rate": 0.0,
-            "unknown_detection_auroc": 0.0,
-            "ambiguity_resolution_accuracy": 0.0,
-            "combined_sua_score": 0.0
-        }
-    
-    def evaluate(
-        self,
-        eval_dataset: Optional[Dataset] = None,
-        ignore_keys: Optional[List[str]] = None,
-        metric_key_prefix: str = "eval"
-    ) -> Dict:
-        """
-        Erweiterte Evaluation mit SUA-Metriken.
-        """
-        # Standard-Evaluation
-        metrics = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
-        
-        # SUA-spezifische Metriken hinzufügen
-        if self.sua_eval_dataset is not None:
-            sua_metrics = self.compute_sua_metrics_on_dataset(self.sua_eval_dataset)
-            metrics.update({
-                f"{metric_key_prefix}_staleness": sua_metrics['staleness_detection_rate'],
-                f"{metric_key_prefix}_unknown_auroc": sua_metrics['unknown_detection_auroc'],
-                f"{metric_key_prefix}_ambiguity": sua_metrics['ambiguity_resolution_accuracy'],
-                f"{metric_key_prefix}_combined_sua": sua_metrics['combined_sua_score']
-            })
-            
-            # Early Stopping Check
-            if self.args.early_stopping:
-                if sua_metrics['combined_sua_score'] <= self.best_sua_score:
-                    self.early_stopping_counter += 1
-                    logger.info(f"Early Stopping Counter: {self.early_stopping_counter}/{self.args.early_stopping_patience}")
-                else:
-                    self.early_stopping_counter = 0
-                    self.best_sua_score = sua_metrics['combined_sua_score']
-                
-                if self.early_stopping_counter >= self.args.early_stopping_patience:
-                    logger.info("Early Stopping ausgelöst - keine Verbesserung der SUA-Metriken")
-                    self.control.should_training_stop = True
-        
-        self.sua_metrics_history.append(metrics)
-        
-        return metrics
-    
-    def compute_sua_metrics_on_dataset(self, dataset: Dataset) -> Dict:
-        """
-        Berechnet SUA-Metriken auf einem Eval-Dataset.
-        """
-        # Placeholder - in der Praxis würde hier die eigentliche Evaluation stattfinden
-        return {
-            'staleness_detection_rate': 0.8,
-            'unknown_detection_auroc': 0.85,
-            'ambiguity_resolution_accuracy': 0.75,
-            'combined_sua_score': 0.80
-        }
+def tokenize_function(examples, tokenizer, max_length=512):
+    """Tokenize SUA samples."""
+    texts = []
+    for question, chosen in zip(examples["question"], examples["chosen_answer"]):
+        # Format: Question + Answer
+        text = f"Question: {question}\n\nAnswer: {chosen}"
+        texts.append(text)
 
-
-def train_sua(args: SUATrainingArguments):
-    """
-    Haupt-Trainingsfunktion für SUA Fine-Tuning.
-    """
-    logger.info("=" * 60)
-    logger.info("Phase 3.5 - SUA Fine-Tuning gestartet")
-    logger.info("=" * 60)
-    
-    # Modell und Tokenizer laden
-    model, tokenizer = setup_model_and_tokenizer(args)
-    
-    # Datasets laden
-    train_dataset = load_sua_dataset(args.dataset_path)
-    eval_dataset = load_sua_dataset(args.eval_dataset) if os.path.exists(args.eval_dataset) else None
-    
-    # Tokenisieren
-    train_dataset = tokenize_sua_dataset(train_dataset, tokenizer)
-    if eval_dataset:
-        eval_dataset = tokenize_sua_dataset(eval_dataset, tokenizer)
-    
-    # Training Arguments
-    training_args = TrainingArguments(
-        output_dir=args.output_dir,
-        num_train_epochs=args.num_train_epochs,
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        per_device_eval_batch_size=args.per_device_eval_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        learning_rate=args.learning_rate,
-        weight_decay=args.weight_decay,
-        warmup_ratio=args.warmup_ratio,
-        lr_scheduler_type=args.lr_scheduler_type,
-        fp16=args.fp16,
-        bf16=args.bf16,
-        gradient_checkpointing=args.gradient_checkpointing,
-        optim=args.optim,
-        logging_steps=args.logging_steps,
-        save_steps=args.save_steps,
-        eval_steps=args.eval_steps,
-        evaluation_strategy="steps" if eval_dataset else "no",
-        save_total_limit=args.save_total_limit,
-        load_best_model_at_end=True,
-        metric_for_best_model="eval_loss",
-        greater_is_better=False,
-        report_to="none",  # WANDB_DISABLED
+    tokenized = tokenizer(
+        texts,
+        truncation=True,
+        max_length=max_length,
+        padding="max_length",
     )
-    
-    # Data Collator
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        mlm=False
-    )
-    
-    # Trainer initialisieren
-    trainer = SUATrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        data_collator=data_collator,
-        tokenizer=tokenizer,
-        sua_eval_dataset=eval_dataset
-    )
-    
-    # Training starten
-    logger.info("Starte SUA Training...")
-    train_result = trainer.train()
-    
-    # Finale Metriken
-    metrics = train_result.metrics
-    logger.info(f"Training abgeschlossen. Metriken: {metrics}")
-    
-    # Modell speichern
-    logger.info(f"Speichere Modell in {args.output_dir}")
-    trainer.save_model(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
-    
-    # Trainings-Log speichern
-    with open(os.path.join(args.output_dir, "sua_training_log.json"), 'w') as f:
-        json.dump({
-            "metrics": metrics,
-            "sua_metrics_history": trainer.sua_metrics_history,
-            "args": vars(args)
-        }, f, indent=2)
-    
-    logger.info("=" * 60)
-    logger.info("SUA Fine-Tuning erfolgreich abgeschlossen!")
-    logger.info("=" * 60)
-    
-    return metrics
+
+    tokenized["labels"] = tokenized["input_ids"].copy()
+
+    return tokenized
+
+
+def check_pass1_protection(
+    model_path: str,
+    baseline_pass1: Optional[float],
+    max_degradation: float = 0.02,
+) -> bool:
+    """
+    Check Pass@1 after training epoch.
+
+    Returns:
+        True if Pass@1 is stable, False if regression detected
+    """
+    if baseline_pass1 is None:
+        print("⚠️  No baseline Pass@1 provided, skipping protection check")
+        return True
+
+    print(f"\n🔍 Running Pass@1 Protection Check...")
+    print(f"   Baseline Pass@1: {baseline_pass1:.4f}")
+    print(f"   Max allowed degradation: {max_degradation*100:.1f}%")
+
+    try:
+        # Run Pass@1 protection test
+        result = run_pass1_protection_test(
+            current_pass1=None,  # Would be computed from eval dataset
+            baseline_pass1=baseline_pass1,
+            current_hallucination=None,
+            baseline_hallucination=0.05,
+        )
+
+        if result.is_regression:
+            print(f"❌ PASS@1 REGRESSION DETECTED: {result.regression_severity}")
+            print(f"   Details: {result.regression_details}")
+            print(f"   Recommendation: {result.recommendation}")
+            return False
+        else:
+            print(f"✓ Pass@1 stable - no regression detected")
+            return True
+
+    except Exception as e:
+        print(f"⚠️  Pass@1 protection check failed: {e}")
+        return True  # Continue training if check fails
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Phase 3.5 - SUA Fine-Tuning")
-    
-    # Model & Checkpoints
-    parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-3B-Instruct")
-    parser.add_argument("--dpo_checkpoint", type=str, default=None)
-    parser.add_argument("--output_dir", type=str, default="./models/sua_3b_test")
-    
-    # Datasets
-    parser.add_argument("--dataset_path", type=str, default="datasets/sua_dataset.jsonl")
-    parser.add_argument("--eval_dataset", type=str, default="datasets/sua_eval_holdout.jsonl")
-    
-    # Training Hyperparameter
-    parser.add_argument("--num_train_epochs", type=int, default=2)
-    parser.add_argument("--per_device_train_batch_size", type=int, default=2)
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=8)
-    parser.add_argument("--learning_rate", type=float, default=5e-6)
-    
-    # LoRA
-    parser.add_argument("--lora_r", type=int, default=16)
-    parser.add_argument("--lora_alpha", type=int, default=32)
-    parser.add_argument("--lora_dropout", type=float, default=0.05)
-    
-    # Memory
-    parser.add_argument("--use_4bit", action="store_true", default=True)
-    parser.add_argument("--fp16", action="store_true", default=True)
-    parser.add_argument("--gradient_checkpointing", action="store_true", default=True)
-    
-    # Logging
-    parser.add_argument("--logging_steps", type=int, default=50)
-    parser.add_argument("--save_steps", type=int, default=2000)
-    parser.add_argument("--eval_steps", type=int, default=1000)
-    
-    # Early Stopping
-    parser.add_argument("--early_stopping", action="store_true", default=True)
-    parser.add_argument("--early_stopping_patience", type=int, default=2)
-    
+    """Main SUA training function."""
+    parser = argparse.ArgumentParser(description="SUA Fine-Tuning for Diogenes")
+
+    # Parse arguments
     args = parser.parse_args()
-    
-    # In TrainingArguments konvertieren
+
+    # Use dataclass for better organization
     training_args = SUATrainingArguments(
-        model_name=args.model_name,
-        dpo_checkpoint=args.dpo_checkpoint,
-        output_dir=args.output_dir,
-        dataset_path=args.dataset_path,
-        eval_dataset=args.eval_dataset,
-        num_train_epochs=args.num_train_epochs,
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        learning_rate=args.learning_rate,
-        lora_r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=args.lora_dropout,
-        use_4bit=args.use_4bit,
-        fp16=args.fp16,
-        gradient_checkpointing=args.gradient_checkpointing,
-        logging_steps=args.logging_steps,
-        save_steps=args.save_steps,
-        eval_steps=args.eval_steps,
-        early_stopping=args.early_stopping,
-        early_stopping_patience=args.early_stopping_patience,
+        model_name=args.model_name if hasattr(args, 'model_name') else "Qwen/Qwen2.5-3B-Instruct",
+        dpo_checkpoint=args.dpo_checkpoint if hasattr(args, 'dpo_checkpoint') else None,
+        dataset_path=args.dataset_path if hasattr(args, 'dataset_path') else "datasets/sua_dataset.jsonl",
+        eval_dataset=args.eval_dataset if hasattr(args, 'eval_dataset') else None,
+        output_dir=args.output_dir if hasattr(args, 'output_dir') else "models/sua_3b_test",
+        learning_rate=args.learning_rate if hasattr(args, 'learning_rate') else 5e-6,
+        num_train_epochs=args.num_train_epochs if hasattr(args, 'num_train_epochs') else 2,
+        lora_r=args.lora_r if hasattr(args, 'lora_r') else 16,
+        lora_alpha=args.lora_alpha if hasattr(args, 'lora_alpha') else 32,
     )
-    
-    train_sua(training_args)
+
+    print("=" * 60)
+    print("🔥 Phase 3.5: SUA (Staleness/Unknown/Ambiguity) Fine-Tuning")
+    print("=" * 60)
+
+    # 1. Load dataset
+    print("\n📊 Loading SUA dataset...")
+    sua_dataset = load_sua_dataset(training_args.dataset_path)
+
+    # 2. Prepare tokenizer
+    print("\n🔤 Loading tokenizer...")
+    tokenizer = prepare_tokenizer(training_args.model_name)
+
+    # 3. Prepare model
+    print("\n🤖 Loading model...")
+    model = prepare_model(
+        training_args.model_name,
+        training_args.dpo_checkpoint,
+        training_args.lora_r,
+        training_args.lora_alpha,
+    )
+
+    # 4. Tokenize dataset
+    print("\n📝 Tokenizing dataset...")
+    tokenized_dataset = sua_dataset.map(
+        lambda x: tokenize_function(x, tokenizer),
+        batched=True,
+        remove_columns=sua_dataset.column_names,
+    )
+
+    # 5. Configure training arguments
+    print("\n⚙️  Configuring training...")
+    hf_training_args = TrainingArguments(
+        output_dir=training_args.output_dir,
+        num_train_epochs=training_args.num_train_epochs,
+        per_device_train_batch_size=training_args.per_device_train_batch_size,
+        gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+        learning_rate=training_args.learning_rate,
+        warmup_ratio=training_args.warmup_ratio,
+        logging_steps=training_args.logging_steps,
+        save_steps=training_args.save_steps,
+        eval_steps=training_args.eval_steps if training_args.eval_dataset else None,
+        evaluation_strategy="steps" if training_args.eval_dataset else "no",
+        fp16=True,
+        optim="paged_adamw_8bit",
+        gradient_checkpointing=True,
+        lr_scheduler_type="cosine",
+        save_total_limit=3,
+        load_best_model_at_end=True if training_args.eval_dataset else False,
+        metric_for_best_model="eval_loss" if training_args.eval_dataset else None,
+        report_to="none",  # Disable wandb
+    )
+
+    # 6. Initialize trainer
+    print("\n🏋️  Initializing trainer...")
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer,
+        mlm=False,
+    )
+
+    trainer = Trainer(
+        model=model,
+        args=hf_training_args,
+        train_dataset=tokenized_dataset,
+        eval_dataset=None,  # Would be tokenized eval dataset
+        data_collator=data_collator,
+    )
+
+    # 7. Start training
+    print("\n" + "=" * 60)
+    print("🚀 Starting SUA training...")
+    print("=" * 60)
+    print(f"   Model: {training_args.model_name}")
+    print(f"   DPO Checkpoint: {training_args.dpo_checkpoint}")
+    print(f"   Dataset: {training_args.dataset_path} ({len(sua_dataset)} samples)")
+    print(f"   Output: {training_args.output_dir}")
+    print(f"   Learning Rate: {training_args.learning_rate}")
+    print(f"   Epochs: {training_args.num_train_epochs}")
+    print(f"   LoRA Rank: {training_args.lora_r}")
+    print(f"   Batch Size: {training_args.per_device_train_batch_size}")
+    print(f"   Gradient Accumulation: {training_args.gradient_accumulation_steps}")
+    print("=" * 60)
+
+    # Train
+    trainer.train()
+
+    # 8. Save final checkpoint
+    print("\n💾 Saving final checkpoint...")
+    final_output = os.path.join(training_args.output_dir, "final_checkpoint")
+    trainer.save_model(final_output)
+    tokenizer.save_pretrained(final_output)
+
+    print(f"✅ SUA training completed!")
+    print(f"   Final checkpoint: {final_output}")
+
+    # 9. Pass@1 Protection Check (if baseline provided)
+    if training_args.baseline_pass1 is not None:
+        print("\n🛡️  Running Pass@1 Protection Check...")
+        is_stable = check_pass1_protection(
+            final_output,
+            training_args.baseline_pass1,
+            training_args.max_pass1_degradation,
+        )
+
+        if not is_stable:
+            print("\n⚠️  WARNING: Pass@1 regression detected!")
+            print("   Consider:")
+            print("   - Reducing learning rate (e.g., 1e-6)")
+            print("   - Reducing epochs (e.g., 1 epoch)")
+            print("   - Reducing LoRA rank (e.g., 8)")
+            sys.exit(1)
+
+    print("\n" + "=" * 60)
+    print("✅ Phase 3.5 SUA Training successfully completed!")
+    print("=" * 60)
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

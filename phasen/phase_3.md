@@ -1,391 +1,560 @@
-# Phase 3 – DPO Testing (RTX 3050 8GB)
+# Phase 3: Diogenes Alignment Engine
 
-**Dauer:** Tag 6–8
+**Version:** 1.0  
+**Stand:** 19. März 2026  
+**Status:** ⏳ GEPLANT (nach Phase 2.5)
 
-**Status:** 📋 **BEREIT ZUM STARTEN** (wartet auf SFT-Completion)
+---
 
-**Hardware:** NVIDIA RTX 3050 (8GB VRAM)
+## Überblick
 
-**Testmodell:** Qwen2.5-3B-Instruct (~7 GB VRAM mit DPO)
+Phase 3 markiert den **Paradigmenwechsel** vom „Fine-Tuning" zum **Conditioned Alignment**. Ab hier übernehmen wir **vollständige Souveränität** über den gesamten Alignment-Prozess.
 
-## Vorbereitung
+### Kernunterschied zu Phase 2
 
-### ✅ Bereits abgeschlossen:
+| Aspekt | Phase 2 (HF Trainer) | Phase 3 (Custom Engine) |
+|--------|---------------------|-------------------------|
+| **Framework** | Hugging Face `trl` + `peft` | Eigenes PyTorch Loop |
+| **Loss** | Standard DPO | Custom: DPO + Epistemic + Audit |
+| **Sampling** | HF Generation | Custom Sampling mit In-Loop-Audit |
+| **Gradient Flow** | Black-Box | Vollständig kontrolliert |
+| **Auditing** | Post-Hoc | In-Loop (<50ms) |
+| **Curriculum** | Statisch | Dynamisch (Mastery-based) |
+| **Iteration Speed** | Schnell | Langsamer, aber präziser |
 
-1. **DPO-Dataset generiert** (60.000 Paare)
-   - Pfad: `datasets/dpo_dataset.jsonl`
-   - Ranking: Gold > Acceptable > Weak > Hallucination
+---
 
-2. **DPO-Audit durchgeführt** ✅
-   - Difficulty: 54.9% hard (akzeptiert für Diogenes)
-   - Verbosity Ratio: 0.78 (✓ unter 1.2)
-   - Abstain Representation: 14.9% (✓ über 5%)
-   - **Status: AUDIT BESTANDEN**
+## Architektur
 
-3. **Training-Script vorbereitet**
-   - `scripts/run_dpo_training.sh` (ausführbar)
-   - `docs/phase3_dpo_ready.md` (Anleitung)
-
-4. **TRL installiert**
-   - `pip install trl` für DPOTrainer
-
-### ⏳ Ausstehend:
-
-- [ ] SFT-Training muss abgeschlossen sein
-- [ ] SFT-Checkpoint verfügbar (`models/sft_3b_test/final_checkpoint`)
-
-## Ziele
-
-- [ ] DPO Training auf RTX 3050 testen
-- [ ] Halluzinationen bestrafen
-- [ ] Ehrliche Antworten belohnen
-- [ ] 60k Preference Pairs trainieren (lokal)
-- [ ] Pass@1 Protection überwachen
-
-## Entwicklungs-Workflow
-
-### Lokal (RTX 3050 8GB) – Diese Phase
+### High-Level Overview
 
 ```
-SFT-Checkpoint (3B) + DPO-Dataset (60k Paare)
-    ↓
-DPO-Audit (bereits bestanden ✓)
-    ↓
-DPO Training (~15-20h auf RTX 3050)
-    ↓
-Halluzinationsrate messen
-    ↓
-Pass@1 Regression Test
+┌────────────────────────────────────────────────────────────────┐
+│              Phase 3: Diogenes Alignment Engine                 │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐ │
+│  │   DataLoader │      │  Model Forward│      │ Custom Loss │ │
+│  │              │      │               │      │             │ │
+│  │ • Epistemic  │─────►│ • LoRA +      │─────►│ • L_DPO     │ │
+│  │   Classif.   │      │   Epistemic   │      │ • L_epi     │ │
+│  │ • Dynamic    │      │   Head        │      │ • L_audit   │ │
+│  │   Batching   │      │               │      │             │ │
+│  └──────────────┘      └──────────────┘      └──────────────┘ │
+│         ▲                      │                      │        │
+│         │                      │                      │        │
+│         │                      ▼                      │        │
+│         │            ┌──────────────┐                 │        │
+│         │            │In-Loop Audit │◄────────────────┘        │
+│         │            │              │                          │
+│         │            │ • 8 Samples  │                          │
+│         │            │ • <50ms      │                          │
+│         │            │ • Reward     │                          │
+│         │            └──────────────┘                          │
+│         │                                                       │
+│         └───────────────────────────────────────────────────────┘
+│                          Curriculum Loop
+│                  (Mastery-based Batch Selection)
+└────────────────────────────────────────────────────────────────┘
 ```
 
-### Produktion (H100 80GB) – Phase 7-B
+---
 
-```
-SFT-Checkpoint (32B) + DPO-Dataset (60k Paare)
-    ↓
-DPO Training (~6h auf H100)
-    ↓
-Final Production Checkpoint
-```
+## Kernkomponenten
 
-## Aufgaben
+### 1. In-Loop Auditing
 
-### 1. Training vorbereiten
-
-- [ ] SFT-Checkpoint abwarten (Phase 2)
-- [x] DPO Dataset laden (~60.000 Paare)
-- [x] Ranking-Klassen: Gold > Acceptable > Weak > Hallucination
-- [x] Data Preprocessing für Preference Learning
-- [x] **DPO-Audit durchgeführt** ✅
-
-### 2. DPO Training konfigurieren
-
-- [x] Preference Loss Funktion einstellen
-- [x] Beta-Parameter: 0.2
-- [x] Batch Size: 1 (für 8GB VRAM)
-- [x] Gradient Accumulation: 16 Steps
-- [x] Referenzmodell laden (für DPO Loss)
-
-### 3. Training durchführen
-
-- [ ] Start DPO Training auf RTX 3050 (`~15-20 Stunden`)
-- [ ] Preference Accuracy monitoren
-- [ ] VRAM-Nutzung überwachen (< 8 GB)
-- [ ] Checkpoints speichern
-
-### 4. Post-Training Validierung
-
-- [ ] Halluzinationsrate auf Testset prüfen
-- [ ] Preference Accuracy messen
-- [ ] Qualitative Bewertung der Antworten
-- [ ] Pass@1 Protection Check
-
-## Deliverables
-
-- [ ] DPO-trained Model (3B Test-Checkpoint)
-- [ ] Training Logs & Metrics
-- [ ] Halluzinations-Baseline gemessen
-- [ ] DPO-Audit Report (bereits vorhanden)
-
-## Erfolgskriterien
-
-- [ ] Training abgeschlossen ohne Errors
-- [ ] Preference Accuracy > Zufallsniveau
-- [ ] Halluzinationen reduziert vs. SFT-only
-- [ ] Ehrliche Ablehnungen stabil
-- [ ] VRAM bleibt unter 8 GB
-- [ ] Keine Pass@1 Regression
-
-## Metriken
-
-| Metrik | Erwartet | Priorität |
-|--------|----------|-----------|
-| DPO Loss | sinkend | Hoch |
-| Preference Accuracy | steigend | Hoch |
-| Halluzinationsrate | reduziert | Hoch |
-| **VRAM-Nutzung** | **< 8 GB** | **Kritisch** |
-| **Pass@1** | **stabil** | **PRIMARY** |
-
-## DPO-Audit Ergebnisse (✅ Bestanden)
-
-```json
-{
-  "total_pairs": 60000,
-  "difficulty_distribution": {
-    "easy": 9019,
-    "medium": 18068,
-    "hard": 32913
-  },
-  "avg_chosen_length": 16.2,
-  "avg_rejected_length": 20.7,
-  "verbosity_ratio": 0.78,
-  "abstain_representation": 14.9%,
-  "passed": true,
-  "recommendation": "PROCEED"
-}
-```
-
-**Bewertung:**
-- ✅ Verbosity Bias: 0.78 (unter 1.2)
-- ✅ Abstain Representation: 14.9% (über 5%)
-- ⚠️ Difficulty: 54.9% hard (akzeptiert für Diogenes)
-
-## Training auf RTX 3050 (8GB)
-
-### Vorbereitung
-
-```bash
-# 1. SFT-Checkpoint prüfen (nach Phase 2)
-ls -lh models/sft_3b_test/final_checkpoint
-
-# 2. DPO-Dataset prüfen (bereits erledigt)
-ls -lh datasets/dpo_dataset.jsonl
-
-# 3. DPO-Audit Report prüfen (bereits erledigt)
-cat dpo_audit_report.json
-```
-
-### Training starten (nach SFT-Completion)
-
-```bash
-# Einfacher Start
-./scripts/run_dpo_training.sh
-
-# Oder mit expliziten Pfaden
-./scripts/run_dpo_training.sh \
-    models/sft_3b_test/final_checkpoint \
-    models/dpo_3b_test \
-    datasets/dpo_dataset.jsonl \
-    2
-```
-
-### Manueller Start (Alternative)
-
-```bash
-cd /home/schaf/projects/diogenes
-source .venv/bin/activate
-export WANDB_DISABLED=true
-
-python3 src/diogenes/train_dpo.py \
-  --model_name Qwen/Qwen2.5-3B-Instruct \
-  --sft_model_path models/sft_3b_test/final_checkpoint \
-  --dataset_path datasets/dpo_dataset.jsonl \
-  --output_dir models/dpo_3b_test \
-  --num_train_epochs 2 \
-  --per_device_train_batch_size 1 \
-  --gradient_accumulation_steps 16 \
-  --learning_rate 5e-7 \
-  --beta 0.2 \
-  --lora-rank 32 \
-  --lora-alpha 64 \
-  --logging-steps 50 \
-  --save-steps 1000
-```
-
-### Konfiguration (configs/config.yaml)
-
-```yaml
-# RTX 3050 (8GB) DPO-Optimierung
-model:
-  name: "Qwen/Qwen2.5-3B-Instruct"
-  use_4bit: true  # QLoRA für VRAM-Optimierung
-
-dpo:
-  # Beta-Parameter für Präferenz-Stärke
-  beta: 0.2
-
-  # Batch Size für 8GB VRAM (DPO benötigt mehr VRAM!)
-  per_device_train_batch_size: 1
-  gradient_accumulation_steps: 16
-  effective_batch_size: 16
-
-  # Learning Rate (niedriger als SFT)
-  learning_rate: 5.0e-7
-  num_train_epochs: 2
-  lr_scheduler_type: "cosine"
-  warmup_ratio: 0.1
-
-  # Memory Optimization (DPO benötigt Referenzmodell)
-  fp16: true
-  optim: "paged_adamw_8bit"
-  gradient_checkpointing: true
-
-  # Reference Model (für DPO Loss)
-  use_reference_model: true
-  ref_model_path: null  # Auto-load from SFT checkpoint
-```
-
-## VRAM-Management
-
-### Erwartete VRAM-Nutzung
-
-| Komponente | VRAM |
-|------------|------|
-| Base Model (3B, 4-bit) | ~2 GB |
-| LoRA Adapter | ~0.5 GB |
-| **Reference Model** (4-bit) | **~2 GB** |
-| Gradients | ~1.5 GB |
-| Optimizer States | ~0.5 GB |
-| Activations | ~1.5 GB |
-| **Gesamt** | **~8 GB** |
-
-**Hinweis:** DPO benötigt mehr VRAM als SFT wegen des Referenzmodells!
-
-### Bei VRAM-Problemen
-
-```bash
-# Option 1: Batch Size auf 1 reduzieren
---per_device_train_batch_size 1
---gradient_accumulation_steps 32
-
-# Option 2: Gradient Checkpointing verstärken
---gradient_checkpointing true
-
-# Option 3: CPU Offload für Referenzmodell
-# (muss im Script implementiert werden)
-
-# Option 4: Kleineres Modell verwenden
---model_name Qwen/Qwen3-1.7B
-```
-
-## Pass@1 Protection
-
-**Während DPO-Training:**
-
-DPO ist besonders anfällig für Pass@1-Degradation durch Prompt-Interferenz.
-
-**Überwachung:**
+**Prinzip:** Während des Trainings generiert das Modell **8 Samples** pro Batch. Ein Mini-Auditor bewertet diese in **<50 ms** und passt den Loss sofort an.
 
 ```python
-from diogenes import run_pass1_protection_test, compute_core_reliability_metrics
-
-# Nach jedem Epoch evaluieren
-for epoch in range(2):
-    model_path = f"./models/dpo_3b_test/checkpoint_epoch_{epoch}"
-
-    # Core Metrics
-    core_metrics = compute_core_reliability_metrics(
-        model_path=model_path,
-        eval_dataset="datasets/eval_holdout.jsonl",
+def in_loop_auditing(model, batch, current_loss):
+    """
+    In-Loop Auditing: Live-Filterung + instant Reward-Update
+    """
+    # 1. Generate 8 samples during training
+    samples = model.generate(
+        batch['input_ids'],
+        num_return_sequences=8,
+        temperature=0.7,
+        do_sample=True
     )
-
-    # Pass@k für Monitoring
-    pass_at_k = evaluate_pass_at_k(
-        model_path=model_path,
-        math_dataset="datasets/math_eval.jsonl",
-        k_values=[1, 3, 5, 10],
-    )
-
-    # Vollständiger Pass@1 Protection Test
-    result = run_pass1_protection_test(
-        predictions=preds,
-        ground_truth=gt,
-        confidences=conf,
-        baseline_pass_at_1=0.75,  # Von SFT-Checkpoint
-        baseline_pass_at_k=0.90,
-        k=5,
-    )
-
-    print(f"Epoch {epoch}:")
-    print(f"  Pass@1: {core_metrics.pass_at_1:.4f}")
-    print(f"  Hallucination Rate: {core_metrics.hallucination_rate:.4f}")
-
-    if result.is_regression:
-        print(f"  ⚠️  REGRESSION: {result.regression_severity}")
-        print(f"  Details: {result.regression_details}")
-        print(f"  Recommendation: {result.recommendation}")
-        print("  ❌ DO NOT PROMOTE this checkpoint")
-    else:
-        print("  ✓ No regression - safe to continue")
+    
+    # 2. Mini-Auditor bewertet (Heuristik + kleines Reward-Model)
+    audit_scores = []
+    for sample in samples:
+        score = mini_auditor.evaluate(
+            sample,
+            batch['ground_truth'],
+            batch['epistemic_category']
+        )
+        audit_scores.append(score)
+    
+    # 3. Loss anpassen basierend auf Audit
+    audit_penalty = 1.0 - torch.mean(torch.tensor(audit_scores))
+    adjusted_loss = current_loss + lambda_audit * audit_penalty
+    
+    return adjusted_loss, audit_scores
 ```
 
-**Warnsignale:**
+**Auditor-Komponenten:**
 
-- Pass@1 ↓ bei gleichzeitiger Pass@k ↑
-- Preference für längere Antworten (Verbosity Bias)
-- Überrepräsentation schwerer Prompts (> 55%)
+| Komponente | Beschreibung | Latenz |
+|------------|--------------|--------|
+| **Heuristik** | Rule-based Prüfung (Hallucination, Mode-Correctness) | <10 ms |
+| **Reward-Model** | Kleines Classifier (2-3 Layer) | <30 ms |
+| **Aggregation** | Weighted Average über 8 Samples | <10 ms |
+| **Gesamt** | - | **<50 ms** |
+
+---
+
+### 2. Curriculum Acceleration
+
+**Prinzip:** Der Loop trackt pro Epistemic Mode die **Mastery-Score** und blendet bereits beherrschte Modi automatisch aus.
+
+**Mastery-Tracking:**
+
+```python
+class MasteryTracker:
+    def __init__(self, num_modes=7):
+        self.mastery_scores = {mode: 0.5 for mode in range(num_modes)}
+        self.target_mastery = 0.85
+        self.decay = 0.99  # Vergessen vorbeugen
+    
+    def update(self, mode, performance_delta):
+        """Update mastery score für einen Modus"""
+        self.mastery_scores[mode] = (
+            self.decay * self.mastery_scores[mode] +
+            (1 - self.decay) * performance_delta
+        )
+    
+    def get_sampling_weights(self):
+        """Berechne Sampling-Weights basierend auf Mastery"""
+        weights = {}
+        for mode, score in self.mastery_scores.items():
+            if score >= self.target_mastery:
+                weights[mode] = 0.1  # Bereits beherrscht → selten sampeln
+            else:
+                weights[mode] = 1.0 - score  # Schwach → häufig sampeln
+        
+        # Normalize
+        total = sum(weights.values())
+        return {k: v/total for k, v in weights.items()}
+```
+
+**Einsparung:** Bis zu **40% Rechenzeit** durch automatisches Ausblenden beherrschter Modi.
+
+**Beispiel:**
+
+```
+Mastery-Scores nach 1000 Steps:
+
+Mode                  | Mastery | Sampling-Weight
+----------------------|---------|----------------
+DIRECT_ANSWER         | 0.92    | 0.1 (ausgeblendet)
+CAUTIOUS_LIMIT        | 0.78    | 0.22
+ABSTAIN               | 0.65    | 0.35
+CLARIFY               | 0.71    | 0.29
+REJECT_PREMISE        | 0.88    | 0.12
+REQUEST_TOOL          | 0.55    | 0.45
+PROBABILISTIC         | 0.82    | 0.18
+
+→ REQUEST_TOOL und ABSTAIN werden 3-4x häufiger gesampelt
+→ DIRECT_ANSWER wird fast ausgeblendet (bereits beherrscht)
+```
+
+---
+
+### 3. Triple-A Prinzip (Vollständige Implementierung)
+
+#### Awareness: Epistemic Category Classification
+
+```python
+class EpistemicDataLoader(DataLoader):
+    """
+    Custom DataLoader mit automatischer epistemic classification
+    """
+    def __init__(self, dataset, classifier, batch_size=16):
+        super().__init__(dataset, batch_size=batch_size)
+        self.classifier = classifier  # Fast Heuristik oder Classifier-Head
+    
+    def __iter__(self):
+        for batch in super().__iter__():
+            # Automatische Klassifikation beim Laden
+            epistemic_categories = self.classifier.classify(
+                batch['question'],
+                batch['context']
+            )
+            batch['epistemic_category'] = epistemic_categories
+            yield batch
+```
+
+**Klassifikation (Heuristik):**
+
+```python
+def heuristic_classification(question, context):
+    """
+    Schnelle Rule-based Klassifikation (<5ms pro Sample)
+    """
+    if contains_time_reference(question) and is_time_sensitive(context):
+        return EPISTEMIC_MODE.STALENESS
+    
+    if contains_knowledge_boundary(question):
+        return EPISTEMIC_MODE.UNKNOWN
+    
+    if is_ambiguous(question):
+        return EPISTEMIC_MODE.AMBIGUITY
+    
+    if has_false_premise(question):
+        return EPISTEMIC_MODE.FALSE_PREMISE
+    
+    if requires_external_tool(question):
+        return EPISTEMIC_MODE.TOOL_REQUIRED
+    
+    return EPISTEMIC_MODE.DIRECT_ANSWER
+```
+
+---
+
+#### Assessment: Gradient Weighting
+
+```python
+def gradient_weighting(loss, epistemic_categories, mastery_scores):
+    """
+    Gradient wird pro Kategorie gewichtet:
+    g_scaled = g · w_cat  mit  w_cat = f(current mastery score)
+    """
+    # Weighted Loss pro Kategorie
+    category_weights = {
+        mode: 1.0 - mastery_scores[mode]  # Schwache Modi stärker gewichten
+        for mode in EPISTEMIC_MODE
+    }
+    
+    # Loss pro Kategorie berechnen
+    category_losses = {}
+    for mode in EPISTEMIC_MODE:
+        mode_mask = (epistemic_categories == mode)
+        if mode_mask.sum() > 0:
+            category_losses[mode] = loss[mode_mask].mean()
+    
+    # Weighted Total Loss
+    total_loss = 0
+    for mode, cat_loss in category_losses.items():
+        weight = category_weights[mode]
+        total_loss += weight * cat_loss
+    
+    return total_loss
+```
+
+---
+
+#### Adjustment: Adaptive Regularization
+
+```python
+class AdaptiveRegularizer:
+    """
+    Adaptive LR + Weight-Decay pro Kategorie
+    """
+    def __init__(self, base_lr=2e-5, base_weight_decay=0.01):
+        self.base_lr = base_lr
+        self.base_weight_decay = base_weight_decay
+        self.drift_threshold = 0.15  # 15% Performance-Drop
+    
+    def get_category_lr(self, mode, performance_delta):
+        """
+        LR anpassen basierend auf Performance-Delta
+        """
+        if performance_delta < -self.drift_threshold:
+            # Drift erkannt → LR reduzieren
+            return self.base_lr * 0.5
+        elif performance_delta > 0.1:
+            # Verbesserung → LR erhöhen
+            return self.base_lr * 1.2
+        return self.base_lr
+    
+    def get_category_weight_decay(self, mode, drift_detected):
+        """
+        Weight-Decay bei Drift automatisch hochfahren
+        """
+        if drift_detected:
+            return self.base_weight_decay * 2.0  # Drift-Schutz
+        return self.base_weight_decay
+```
+
+---
+
+## Technische Umsetzung
+
+### Complete Training Loop
+
+```python
+class DiogenesAlignmentEngine:
+    def __init__(self, config):
+        self.model = load_model(config)
+        self.optimizer = AdamW(self.model.parameters(), lr=config.lr)
+        self.classifier = EpistemicClassifier()
+        self.auditor = MiniAuditor()
+        self.mastery_tracker = MasteryTracker()
+        self.regularizer = AdaptiveRegularizer()
+    
+    def train_step(self, batch):
+        # 1. Awareness: Epistemic Classification
+        epistemic_categories = self.classifier.classify(batch)
+        
+        # 2. Forward Pass
+        logits = self.model(batch['input_ids'])
+        
+        # 3. Assessment: Loss Calculation
+        loss_dpo = compute_dpo_loss(logits, batch['preferences'])
+        loss_epi = epistemic_regularization(logits, epistemic_categories)
+        
+        # 4. In-Loop Auditing
+        if self.step % self.config.audit_interval == 0:
+            loss_audit, audit_scores = self.auditor.audit(
+                self.model, batch, loss_dpo
+            )
+        else:
+            loss_audit = 0
+        
+        # 5. Gradient Weighting (Assessment)
+        loss_total = loss_dpo + loss_epi + loss_audit
+        loss_weighted = gradient_weighting(
+            loss_total,
+            epistemic_categories,
+            self.mastery_tracker.mastery_scores
+        )
+        
+        # 6. Backward Pass (Adjustment)
+        loss_weighted.backward()
+        
+        # 7. Adaptive Gradient Clipping
+        adaptive_clip_grad(self.model, self.mastery_tracker)
+        
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+        
+        # 8. Update Mastery Tracker
+        self.mastery_tracker.update(
+            epistemic_categories,
+            performance_delta=compute_performance_delta()
+        )
+        
+        # 9. Logging
+        self.log_metrics({
+            'loss/total': loss_weighted.item(),
+            'loss/dpo': loss_dpo.item(),
+            'loss/epi': loss_epi.item(),
+            'loss/audit': loss_audit.item() if isinstance(loss_audit, torch.Tensor) else loss_audit,
+            **self.mastery_tracker.mastery_scores
+        })
+```
+
+---
+
+## Decision Gates für Phase 3
+
+### Wann zu Phase 3 wechseln?
+
+**Mindestens 2 der folgenden Bedingungen über 3 consecutive runs:**
+
+| Gate | Schwellenwert | Messung |
+|------|---------------|---------|
+| **Loss Stagnation** | val_loss Δ < 0.001 über >5% des Trainings | HF Training Plateau |
+| **Mode Collapse** | < 15% „I don't know" Samples trotz Ground-Truth | Epistemic Mode Distribution |
+| **Audit Lag** | > 2h Delay zwischen Audit und Training | Audit Pipeline Monitoring |
+| **Gradient Interference** | > 20% Drop auf alten Fact-Tasks | Fact Retention Eval |
+| **Epistemic Drift (v2.0)** | > 8% Unsicherheit bei stabilen Fakten | Stability Monitor |
+
+---
+
+## Checkpoint-Resumption (v2.0)
+
+**State-Dict für alle drei A's:**
+
+```python
+def save_checkpoint(engine, path):
+    """
+    Vollständiger Checkpoint mit State für Awareness, Assessment, Adjustment
+    """
+    checkpoint = {
+        'model_state': engine.model.state_dict(),
+        'optimizer_state': engine.optimizer.state_dict(),
+        'mastery_scores': engine.mastery_tracker.mastery_scores,
+        'classifier_state': engine.classifier.state_dict(),
+        'step': engine.step,
+        'config': engine.config
+    }
+    torch.save(checkpoint, path)
+
+def load_checkpoint(path):
+    """
+    Checkpoint laden und State restaurieren
+    """
+    checkpoint = torch.load(path)
+    engine = DiogenesAlignmentEngine(checkpoint['config'])
+    engine.model.load_state_dict(checkpoint['model_state'])
+    engine.optimizer.load_state_dict(checkpoint['optimizer_state'])
+    engine.mastery_tracker.mastery_scores = checkpoint['mastery_scores']
+    engine.classifier.load_state_dict(checkpoint['classifier_state'])
+    engine.step = checkpoint['step']
+    return engine
+```
+
+---
+
+## Logging & Monitoring
+
+### WandB Integration
+
+```python
+import wandb
+
+def log_epistemic_metrics(engine, step):
+    """
+    Custom logging aller epistemic Metrics in Echtzeit
+    """
+    wandb.log({
+        # Loss Components
+        'loss/total': engine.loss_total,
+        'loss/dpo': engine.loss_dpo,
+        'loss/epistemic': engine.loss_epi,
+        'loss/audit': engine.loss_audit,
+        
+        # Mastery Scores per Mode
+        'mastery/DIRECT_ANSWER': engine.mastery_tracker.scores[0],
+        'mastery/CAUTIOUS_LIMIT': engine.mastery_tracker.scores[1],
+        'mastery/ABSTAIN': engine.mastery_tracker.scores[2],
+        'mastery/CLARIFY': engine.mastery_tracker.scores[3],
+        'mastery/REJECT_PREMISE': engine.mastery_tracker.scores[4],
+        'mastery/REQUEST_TOOL': engine.mastery_tracker.scores[5],
+        'mastery/PROBABILISTIC': engine.mastery_tracker.scores[6],
+        
+        # Sampling Weights
+        'sampling/REQUEST_TOOL_weight': engine.sampling_weights[5],
+        'sampling/ABSTAIN_weight': engine.sampling_weights[2],
+        
+        # Audit Metrics
+        'audit/average_score': engine.audit_score_mean,
+        'audit/hallucination_rate': engine.hallucination_rate,
+        
+        # Regularization
+        'regularization/lambda_epi': engine.lambda_epi,
+        'regularization/lambda_audit': engine.lambda_audit,
+        
+        # Learning Rates (per category)
+        'lr/DIRECT_ANSWER': engine.category_lrs[0],
+        'lr/REQUEST_TOOL': engine.category_lrs[5],
+        
+        step=step
+    })
+```
+
+---
+
+## Implementierungs-Roadmap
+
+### Woche 1: Core-Engine
+
+**Tag 1-2: Custom DataLoader**
+- [ ] `EpistemicDataLoader` implementieren
+- [ ] Epistemic Classification integrieren
+- [ ] Dynamic Batching testen
+
+**Tag 3-4: Loss Functions**
+- [ ] Custom DPO Loss implementieren
+- [ ] Epistemic Regularization integrieren
+- [ ] Audit Loss hinzufügen
+
+**Tag 5: Train Step**
+- [ ] `train_step()` mit torch.autograd
+- [ ] Gradient Weighting implementieren
+- [ ] Erste Tests
+
+### Woche 2: Advanced Features
+
+**Tag 6-7: In-Loop Auditing**
+- [ ] `MiniAuditor` implementieren
+- [ ] 8-Sample Generation optimieren
+- [ ] <50ms Latenz sicherstellen
+
+**Tag 8-9: Curriculum Acceleration**
+- [ ] `MasteryTracker` implementieren
+- [ ] Dynamic Sampling Weights
+- [ ] Testing mit holdout dataset
+
+**Tag 10: Integration + Testing**
+- [ ] Komplette Pipeline testen
+- [ ] Checkpoint-Resumption testen
+- [ ] WandB Logging konfigurieren
+
+---
+
+## Erfolgsmetriken
+
+### Phase 3 gilt als erfolgreich, wenn:
+
+✅ **Loss Improvement:** val_loss < Phase 2 - 0.05  
+✅ **Epistemic Score:** > +10% gegenüber Phase 2  
+✅ **Hallucination Rate:** < 5% (Ziel erreicht)  
+✅ **Curriculum Efficiency:** ≥ 30% Rechenzeit-Einsparung  
+✅ **In-Loop Audit Latenz:** < 50ms im Durchschnitt  
+✅ **Pass@1 Stability:** < 1% Regression  
+
+---
 
 ## Risiken & Mitigation
 
-| Risiko | Mitigation |
-|--------|------------|
-| Prompt-Interferenz | ✅ DPO-Audit vor Training bestanden |
-| Overfitting | Early Stopping nach 1-2 Epochen |
-| Difficulty Bias | ✅ Ausgewogenes Dataset (54.9% hard) |
-| Verbosity Bias | ✅ Dataset hat 0.78 Ratio |
-| **VRAM-Overflow** | **Batch Size 1 + Gradient Accumulation** |
-| **Pass@1 Degradation** | **Regression-Tracker nach jedem Epoch** |
+| Risiko | Wahrscheinlichkeit | Impact | Mitigation |
+|--------|-------------------|--------|------------|
+| **In-Loop Audit zu langsam** | Mittel | Hoch | Auditor auf CPU auslagern, Async-Processing |
+| **Curriculum zu aggressiv** | Mittel | Mittel | Mastery-Target konservativ (0.85), Decay anpassen |
+| **Gradient Instability** | Niedrig | Hoch | Gradient Clipping, LR Warmup, Monitoring |
+| **Checkpoint Corruption** | Niedrig | Hoch | Frequent Checkpointing (alle 500 Steps), Backup-Strategy |
 
-## Troubleshooting
+---
 
-### OOM (Out of Memory)
+## Code-Struktur
 
-```bash
-# DPO benötigt mehr VRAM als SFT!
-
-# Lösung 1: Batch Size auf 1
---per_device_train_batch_size 1
---gradient_accumulation_steps 32
-
-# Lösung 2: Reference Model Offload
---ref_model_offload true
-
-# Lösung 3: Kleineres Modell
---model_name Qwen/Qwen3-1.7B
+```
+src/diogenes/alignment_engine/
+├── __init__.py
+├── config.py           # Engine-Konfiguration
+├── dataloader.py       # EpistemicDataLoader + Classification
+├── model.py            # Model Wrapper + Epistemic Head
+├── loss.py             # Custom Loss Functions
+├── auditor.py          # MiniAuditor (Heuristik + Reward)
+├── curriculum.py       # MasteryTracker + Sampling Weights
+├── regularizer.py      # AdaptiveRegularizer + Gradient Surgery
+├── train_step.py       # Complete train_step Implementation
+├── checkpoint.py       # Checkpoint-Resumption
+├── logging.py          # WandB Integration
+└── main.py             # Haupt-Training-Loop
 ```
 
-### Schlechte Preference Accuracy
-
-```bash
-# Beta-Parameter anpassen
---beta 0.1  # Stärkere Präferenz
-
-# Oder Learning Rate erhöhen
---learning_rate 1e-6
-```
-
-### Training bricht ab
-
-```bash
-# Von Checkpoint fortsetzen
---resume_from_checkpoint models/dpo_3b_test/checkpoint-1000
-```
+---
 
 ## Nächste Schritte
 
-➡️ **Phase 4**: Calibration Testing auf RTX 3050
+1. **Nach Phase 2.5 (Shadow Loop):**
+   - Shadow Loop Exit-Kriterien evaluieren
+   - Bei Erfolg: Phase 3 freigeben
+   - Bei Misserfolg: Shadow als Diagnostic-Tool behalten
 
-- Temperature Scaling implementieren
-- ECE und Brier Score optimieren
-- Confidence Mapping kalibrieren
+2. **Phase 3 Implementierung:**
+   - Core-Engine entwickeln (Woche 1)
+   - Advanced Features (Woche 2)
+   - Testing + Tuning (Woche 3)
 
-➡️ **Phase 7-B**: Finales DPO Training auf H100 (nach lokaler Validierung)
+3. **Nach Phase 3:**
+   - Phase 3.5 (SUA Specialization)
+   - Phase 4 (Calibration)
+   - Phase 5-6 (Evaluation + Red Teaming)
+
+---
 
 ## Referenzen
 
-- `src/diogenes/train_dpo.py` – DPO Training Script
-- `src/diogenes/dpo_audit.py` – DPO Audit Script
-- `src/diogenes/pass1_protection.py` – DPO Audit Tools
-- `docs/PASS1_GUARDRAILS.md` – DPO Design Guardrails
-- `docs/phase3_dpo_ready.md` – Phase 3 Anleitung
-- `scripts/run_dpo_training.sh` – DPO-Training Script
+- **Phase 2.5 (Shadow Loop):** Siehe `phasen/phase_2.5.md`
+- **Decision Gates:** Siehe `roadmap.md#18-decision-gates`
+- **Triple-A Prinzip:** Siehe `roadmap.md#20-technischer-blueprint`
+- **Epistemic Modes:** Siehe `README.md#epistemic-modes`
+- **Pass@1 Protection:** Siehe `docs/PASS1_GUARDRAILS.md`

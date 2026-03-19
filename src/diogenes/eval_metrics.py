@@ -17,15 +17,22 @@ Tier 2: Optional Special Metrics (Verifiable tasks only)
   - Pass@k for retrieval + verifier tasks
   - Multi-sampling for tool-assisted control paths
 
+Tier 3: SUA Metrics (Phase 3.5 - Staleness/Unknown/Ambiguity)
+  - Staleness Detection Rate
+  - Unknown Detection AUROC
+  - Ambiguity Resolution Accuracy
+  - Combined SUA Score
+
 Key Principle: Diogenes optimizes for reliable single-response decisions,
 not multi-sampling success.
 """
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from sklearn.metrics import roc_auc_score
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +137,68 @@ class SpecialMetrics:
             "math_accuracy": self.math_accuracy,
             "code_pass_rate": self.code_pass_rate,
             "retrieval_precision": self.retrieval_precision,
+        }
+
+
+@dataclass
+class SUAMetrics:
+    """Tier 3: SUA (Staleness/Unknown/Ambiguity) Metrics for Phase 3.5.
+
+    These metrics measure the model's ability to:
+    - Recognize stale/outdated information (temporal knowledge boundaries)
+    - Identify unknown/unknowable information (fundamental knowledge gaps)
+    - Detect and handle ambiguous queries (clarification needs)
+
+    These metrics are optimized during Phase 3.5 SUA Fine-Tuning.
+    """
+    # Staleness Detection Metrics
+    staleness_detection_rate: float = 0.0  # % correctly identified as stale
+    staleness_false_positive_rate: float = 0.0  # % falsely flagged as stale
+    staleness_precision: float = 0.0
+    staleness_f1: float = 0.0
+    staleness_n_samples: int = 0
+
+    # Unknown Detection Metrics
+    unknown_detection_auroc: float = 0.5  # AUROC for unknowable questions
+    unknown_precision_at_50_recall: float = 0.0
+    unknown_recall_at_90_precision: float = 0.0
+    unknown_n_samples: int = 0
+
+    # Ambiguity Handling Metrics
+    ambiguity_resolution_accuracy: float = 0.0  # % correctly resolved
+    clarification_quality_score: float = 0.0  # Semantic similarity of clarifications
+    clarification_rate: float = 0.0  # % of ambiguous queries that triggered clarification
+    ambiguity_n_samples: int = 0
+
+    # Combined SUA Score (weighted average)
+    combined_sua_score: float = 0.0
+    sua_weights: dict[str, float] = field(default_factory=lambda: {
+        "staleness": 0.30,
+        "unknown": 0.40,
+        "ambiguity": 0.30
+    })
+
+    # Per-category breakdown
+    staleness_by_category: dict[str, float] = field(default_factory=dict)
+    unknown_by_category: dict[str, float] = field(default_factory=dict)
+    ambiguity_by_category: dict[str, float] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for logging/storage."""
+        return {
+            "staleness_detection_rate": self.staleness_detection_rate,
+            "staleness_false_positive_rate": self.staleness_false_positive_rate,
+            "staleness_precision": self.staleness_precision,
+            "staleness_f1": self.staleness_f1,
+            "unknown_detection_auroc": self.unknown_detection_auroc,
+            "unknown_precision_at_50_recall": self.unknown_precision_at_50_recall,
+            "ambiguity_resolution_accuracy": self.ambiguity_resolution_accuracy,
+            "clarification_quality_score": self.clarification_quality_score,
+            "combined_sua_score": self.combined_sua_score,
+            "sua_weights": self.sua_weights,
+            "staleness_by_category": self.staleness_by_category,
+            "unknown_by_category": self.unknown_by_category,
+            "ambiguity_by_category": self.ambiguity_by_category,
         }
 
 
@@ -696,5 +765,406 @@ def compute_special_metrics(
             k1, k2 = k_values[0], k_values[-1]
             improvement = metrics.pass_at_k_math.get(k2, 0) - metrics.pass_at_k_math.get(k1, 0)
             metrics.sampling_efficiency = improvement / (k2 - k1) if k2 > k1 else 0.0
-    
+
     return metrics
+
+
+# =============================================================================
+# SUA (Staleness/Unknown/Ambiguity) Metrics - Phase 3.5
+# =============================================================================
+
+def compute_sua_metrics(
+    predictions: List[Dict],
+    ground_truth: List[Dict],
+) -> SUAMetrics:
+    """Compute all SUA Metrics (Tier 3) for Phase 3.5 evaluation.
+
+    Args:
+        predictions: List of model predictions with structure:
+            {
+                "id": str,
+                "category": "staleness|unknown|ambiguity",
+                "predicted_mode": str,
+                "confidence": float,
+                "is_stale": bool (optional),
+                "unknown_confidence": float (optional),
+                "clarification_needed": bool (optional),
+                "clarification": str (optional),
+                "response": str
+            }
+        ground_truth: List of ground truth labels with structure:
+            {
+                "id": str,
+                "category": "staleness|unknown|ambiguity",
+                "gold_mode": str,
+                "is_stale": bool (for staleness samples),
+                "is_unknown": bool (for unknown samples),
+                "needs_clarification": bool (for ambiguity samples),
+                "gold_clarification": str (optional)
+            }
+
+    Returns:
+        SUAMetrics object with all SUA metrics computed
+    """
+    if len(predictions) != len(ground_truth):
+        raise ValueError("predictions and ground_truth must have same length")
+
+    # Separate by category
+    staleness_preds = []
+    staleness_gt = []
+    unknown_preds = []
+    unknown_gt = []
+    ambiguity_preds = []
+    ambiguity_gt = []
+
+    for pred, gt in zip(predictions, ground_truth):
+        category = gt.get("category", "")
+        if category == "staleness":
+            staleness_preds.append(pred)
+            staleness_gt.append(gt)
+        elif category == "unknown":
+            unknown_preds.append(pred)
+            unknown_gt.append(gt)
+        elif category == "ambiguity":
+            ambiguity_preds.append(pred)
+            ambiguity_gt.append(gt)
+
+    # Compute per-category metrics
+    staleness_metrics = compute_staleness_metrics(staleness_preds, staleness_gt)
+    unknown_metrics = compute_unknown_metrics(unknown_preds, unknown_gt)
+    ambiguity_metrics = compute_ambiguity_metrics(ambiguity_preds, ambiguity_gt)
+
+    # Compute combined SUA score
+    combined_score = (
+        staleness_metrics["sua_weights"]["staleness"] * staleness_metrics["staleness_f1"] +
+        unknown_metrics["sua_weights"]["unknown"] * unknown_metrics["unknown_detection_auroc"] +
+        ambiguity_metrics["sua_weights"]["ambiguity"] * ambiguity_metrics["clarification_quality_score"]
+    )
+
+    return SUAMetrics(
+        staleness_detection_rate=staleness_metrics["staleness_detection_rate"],
+        staleness_false_positive_rate=staleness_metrics["staleness_false_positive_rate"],
+        staleness_precision=staleness_metrics["staleness_precision"],
+        staleness_f1=staleness_metrics["staleness_f1"],
+        staleness_n_samples=len(staleness_preds),
+        unknown_detection_auroc=unknown_metrics["unknown_detection_auroc"],
+        unknown_precision_at_50_recall=unknown_metrics["unknown_precision_at_50_recall"],
+        unknown_recall_at_90_precision=unknown_metrics["unknown_recall_at_90_precision"],
+        unknown_n_samples=len(unknown_preds),
+        ambiguity_resolution_accuracy=ambiguity_metrics["ambiguity_resolution_accuracy"],
+        clarification_quality_score=ambiguity_metrics["clarification_quality_score"],
+        clarification_rate=ambiguity_metrics["clarification_rate"],
+        ambiguity_n_samples=len(ambiguity_preds),
+        combined_sua_score=combined_score,
+        sua_weights=staleness_metrics["sua_weights"],
+        staleness_by_category=staleness_metrics.get("by_category", {}),
+        unknown_by_category=unknown_metrics.get("by_category", {}),
+        ambiguity_by_category=ambiguity_metrics.get("by_category", {}),
+    )
+
+
+def compute_staleness_metrics(
+    predictions: List[Dict],
+    ground_truth: List[Dict],
+) -> Dict:
+    """Compute Staleness Detection metrics.
+
+    Args:
+        predictions: List of predictions with 'is_stale' and 'staleness_confidence'
+        ground_truth: List of ground truth with 'is_stale' boolean
+
+    Returns:
+        Dictionary with staleness metrics
+    """
+    if not predictions:
+        return {
+            "staleness_detection_rate": 0.0,
+            "staleness_false_positive_rate": 0.0,
+            "staleness_precision": 0.0,
+            "staleness_f1": 0.0,
+            "sua_weights": {"staleness": 0.30},
+            "by_category": {}
+        }
+
+    # Binary classification metrics
+    true_positives = sum(
+        1 for pred, gt in zip(predictions, ground_truth)
+        if pred.get("is_stale", False) and gt.get("is_stale", False)
+    )
+    false_positives = sum(
+        1 for pred, gt in zip(predictions, ground_truth)
+        if pred.get("is_stale", False) and not gt.get("is_stale", False)
+    )
+    false_negatives = sum(
+        1 for pred, gt in zip(predictions, ground_truth)
+        if not pred.get("is_stale", False) and gt.get("is_stale", False)
+    )
+    true_negatives = sum(
+        1 for pred, gt in zip(predictions, ground_truth)
+        if not pred.get("is_stale", False) and not gt.get("is_stale", False)
+    )
+
+    total_stale = sum(1 for gt in ground_truth if gt.get("is_stale", False))
+    total_fresh = len(ground_truth) - total_stale
+
+    detection_rate = true_positives / max(total_stale, 1)
+    false_positive_rate = false_positives / max(total_fresh, 1)
+    precision = true_positives / max(true_positives + false_positives, 1)
+    recall = detection_rate
+    f1 = 2 * precision * recall / max(precision + recall, 1e-10)
+
+    # Per-category breakdown
+    by_category = {}
+    categories = set(gt.get("subcategory", "general") for gt in ground_truth)
+    for cat in categories:
+        cat_preds = [p for p, gt in zip(predictions, ground_truth) if gt.get("subcategory") == cat]
+        cat_gt = [gt for gt in ground_truth if gt.get("subcategory") == cat]
+        if cat_preds:
+            cat_metrics = compute_staleness_metrics(cat_preds, cat_gt)
+            by_category[cat] = cat_metrics["staleness_f1"]
+
+    return {
+        "staleness_detection_rate": detection_rate,
+        "staleness_false_positive_rate": false_positive_rate,
+        "staleness_precision": precision,
+        "staleness_f1": f1,
+        "sua_weights": {"staleness": 0.30},
+        "by_category": by_category
+    }
+
+
+def compute_unknown_metrics(
+    predictions: List[Dict],
+    ground_truth: List[Dict],
+) -> Dict:
+    """Compute Unknown Detection metrics using AUROC.
+
+    Args:
+        predictions: List of predictions with 'unknown_confidence' scores
+        ground_truth: List of ground truth with 'is_unknown' boolean
+
+    Returns:
+        Dictionary with unknown detection metrics
+    """
+    if not predictions:
+        return {
+            "unknown_detection_auroc": 0.5,
+            "unknown_precision_at_50_recall": 0.0,
+            "unknown_recall_at_90_precision": 0.0,
+            "sua_weights": {"unknown": 0.40},
+            "by_category": {}
+        }
+
+    # Extract scores and labels
+    y_scores = [pred.get("unknown_confidence", 0.5) for pred in predictions]
+    y_true = [1 if gt.get("is_unknown", False) else 0 for gt in ground_truth]
+
+    # AUROC computation
+    try:
+        auroc = roc_auc_score(y_true, y_scores)
+    except ValueError:
+        # Handle edge cases (e.g., all same class)
+        auroc = 0.5
+
+    # Precision at 50% recall
+    precision_at_50 = _compute_precision_at_recall(y_true, y_scores, target_recall=0.5)
+
+    # Recall at 90% precision
+    recall_at_90 = _compute_recall_at_precision(y_true, y_scores, target_precision=0.9)
+
+    # Per-category breakdown
+    by_category = {}
+    categories = set(gt.get("subcategory", "general") for gt in ground_truth)
+    for cat in categories:
+        cat_preds = [p for p, gt in zip(predictions, ground_truth) if gt.get("subcategory") == cat]
+        cat_gt = [gt for gt in ground_truth if gt.get("subcategory") == cat]
+        if cat_preds:
+            cat_metrics = compute_unknown_metrics(cat_preds, cat_gt)
+            by_category[cat] = cat_metrics["unknown_detection_auroc"]
+
+    return {
+        "unknown_detection_auroc": auroc,
+        "unknown_precision_at_50_recall": precision_at_50,
+        "unknown_recall_at_90_precision": recall_at_90,
+        "sua_weights": {"unknown": 0.40},
+        "by_category": by_category
+    }
+
+
+def compute_ambiguity_metrics(
+    predictions: List[Dict],
+    ground_truth: List[Dict],
+) -> Dict:
+    """Compute Ambiguity Resolution metrics.
+
+    Args:
+        predictions: List of predictions with 'clarification_needed' and 'clarification'
+        ground_truth: List of ground truth with 'needs_clarification' and 'gold_clarification'
+
+    Returns:
+        Dictionary with ambiguity metrics
+    """
+    if not predictions:
+        return {
+            "ambiguity_resolution_accuracy": 0.0,
+            "clarification_quality_score": 0.0,
+            "clarification_rate": 0.0,
+            "sua_weights": {"ambiguity": 0.30},
+            "by_category": {}
+        }
+
+    # Binary classification accuracy for clarification detection
+    correct_clarification = sum(
+        1 for pred, gt in zip(predictions, ground_truth)
+        if pred.get("clarification_needed", False) == gt.get("needs_clarification", False)
+    )
+    accuracy = correct_clarification / len(predictions)
+
+    # Clarification quality (semantic similarity)
+    clarification_scores = []
+    for pred, gt in zip(predictions, ground_truth):
+        if gt.get("needs_clarification", False):
+            pred_clarification = pred.get("clarification", "")
+            gold_clarification = gt.get("gold_clarification", "")
+            if pred_clarification and gold_clarification:
+                # Simple overlap-based similarity (replace with better metric in production)
+                similarity = _semantic_similarity(pred_clarification, gold_clarification)
+                clarification_scores.append(similarity)
+
+    quality_score = sum(clarification_scores) / max(len(clarification_scores), 1) if clarification_scores else 0.0
+
+    # Clarification rate
+    clarification_rate = sum(1 for pred in predictions if pred.get("clarification_needed", False)) / len(predictions)
+
+    # Per-category breakdown
+    by_category = {}
+    categories = set(gt.get("subcategory", "general") for gt in ground_truth)
+    for cat in categories:
+        cat_preds = [p for p, gt in zip(predictions, ground_truth) if gt.get("subcategory") == cat]
+        cat_gt = [gt for gt in ground_truth if gt.get("subcategory") == cat]
+        if cat_preds:
+            cat_metrics = compute_ambiguity_metrics(cat_preds, cat_gt)
+            by_category[cat] = cat_metrics["clarification_quality_score"]
+
+    return {
+        "ambiguity_resolution_accuracy": accuracy,
+        "clarification_quality_score": quality_score,
+        "clarification_rate": clarification_rate,
+        "sua_weights": {"ambiguity": 0.30},
+        "by_category": by_category
+    }
+
+
+def _compute_precision_at_recall(
+    y_true: List[int],
+    y_scores: List[float],
+    target_recall: float = 0.5,
+) -> float:
+    """Compute precision at a given recall level.
+
+    Args:
+        y_true: Binary ground truth labels
+        y_scores: Prediction scores
+        target_recall: Target recall level (0-1)
+
+    Returns:
+        Precision at target recall
+    """
+    if sum(y_true) == 0:
+        return 0.0
+
+    # Sort by score descending
+    sorted_indices = np.argsort(-y_scores)
+    sorted_true = np.array(y_true)[sorted_indices]
+
+    # Compute precision-recall curve
+    n_pos = sum(y_true)
+    tp = 0
+    fp = 0
+    precision_at_recall = 0.0
+
+    for i, label in enumerate(sorted_true):
+        if label == 1:
+            tp += 1
+        else:
+            fp += 1
+
+        recall = tp / n_pos
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+
+        if recall >= target_recall:
+            precision_at_recall = precision
+            break
+
+    return precision_at_recall
+
+
+def _compute_recall_at_precision(
+    y_true: List[int],
+    y_scores: List[float],
+    target_precision: float = 0.9,
+) -> float:
+    """Compute recall at a given precision level.
+
+    Args:
+        y_true: Binary ground truth labels
+        y_scores: Prediction scores
+        target_precision: Target precision level (0-1)
+
+    Returns:
+        Recall at target precision
+    """
+    if sum(y_true) == 0:
+        return 0.0
+
+    # Sort by score descending
+    sorted_indices = np.argsort(-y_scores)
+    sorted_true = np.array(y_true)[sorted_indices]
+
+    # Compute precision-recall curve
+    n_pos = sum(y_true)
+    tp = 0
+    fp = 0
+    recall_at_precision = 0.0
+
+    for i, label in enumerate(sorted_true):
+        if label == 1:
+            tp += 1
+        else:
+            fp += 1
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / n_pos
+
+        if precision < target_precision and i > 0:
+            # Previous point was the last one meeting precision target
+            break
+        recall_at_precision = recall
+
+    return recall_at_precision
+
+
+def _semantic_similarity(text1: str, text2: str) -> float:
+    """Compute simple semantic similarity between two texts.
+
+    This is a placeholder using token overlap. In production, use
+    sentence embeddings or a more sophisticated metric.
+
+    Args:
+        text1: First text
+        text2: Second text
+
+    Returns:
+        Similarity score between 0 and 1
+    """
+    # Simple token overlap (Jaccard similarity)
+    tokens1 = set(text1.lower().split())
+    tokens2 = set(text2.lower().split())
+
+    if not tokens1 or not tokens2:
+        return 0.0
+
+    intersection = tokens1 & tokens2
+    union = tokens1 | tokens2
+
+    return len(intersection) / len(union) if union else 0.0

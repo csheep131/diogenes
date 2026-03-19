@@ -1,10 +1,10 @@
 # MASTERPLAN – THE RELIABLE 32B
 
-**Version 5**
+**Version 7**
 
-**Stand:** 18. März 2026
+**Stand:** 19. März 2026
 
-**Status:** Phase 0-1 abgeschlossen · Phase 2-6 auf RTX 3050 (8GB) · Phase 7 auf H100
+**Status:** Phase 0-1 abgeschlossen · Phase 2-6 auf RTX 3050 (8GB) · Phase 7 auf H100 · Phase 2.5 + 3 neu hinzugefügt
 
 ---
 
@@ -48,6 +48,9 @@ Das Modell soll in kritischen Bereichen (IT, Produktion, Medizin, Recht, Finanze
 
 ## 0. Versionshistorie
 
+- **v7** (19.03.2026): Phase 2.5 (Shadow Loop) + Phase 3 (Alignment Engine) + Decision Gates + Training Strategy v2.0
+- **v6** (19.03.2026): README Update + Current Status + Training Strategy
+- **v5** (18.03.2026): Phase 0-1 abgeschlossen, Pass@1-Schutz implementiert, Eval-Metriken erweitert
 - **v4** (18.03.2026): Phase 0-1 abgeschlossen, Pass@1-Schutz implementiert, Eval-Metriken erweitert
 - **v3**: Professionelle Struktur + komplette Roadmap + Risiken + Erwartete Verbesserungen
 - **v2**: Gestraft & neutralisiert
@@ -370,13 +373,21 @@ confident_wrong       -3.0
 | 1 | RTX 3050 | Tag 1–2 | Dataset Generator + Scripts | ✅ **ABGESCHLOSSEN** |
 | 2 | RTX 3050 | Tag 3–5 | SFT Testing (3B Modell) | 🔄 **IN PROGRESS** |
 | 3 | RTX 3050 | Tag 6–8 | DPO Testing (3B Modell) | ⏳ **GEPLANT** |
-| 4 | RTX 3050 | Tag 9 | Calibration Testing | ⏳ **GEPLANT** |
-| 5 | RTX 3050 | Tag 10–11 | Full Evaluation (3B Modell) | ⏳ **GEPLANT** |
-| 6 | RTX 3050 | Tag 12–13 | Red Teaming (3B Modell) | ⏳ **GEPLANT** |
-| 7-A | H100 | Tag 14 | **Final SFT (32B)** | ⏳ **GEPLANT** |
-| 7-B | H100 | Tag 15 | **Final DPO (32B)** | ⏳ **GEPLANT** |
-| 7-C | H100 | Tag 16 | **Final Calibration (32B)** | ⏳ **GEPLANT** |
-| 7-D | H100 | Tag 17 | **Final Evaluation (32B)** | ⏳ **GEPLANT** |
+| **2.5** | **RTX 3050** | **Tag 8–10** | **Shadow Loop (Parallel-Experiment)** | ⏳ **GEPLANT** |
+| **3.5** | **RTX 3050** | **Tag 10–11** | **SUA Specialization (Staleness/Unknown/Ambiguity)** | ⏳ **GEPLANT** |
+| 4 | RTX 3050 | Tag 12 | Calibration Testing | ⏳ **GEPLANT** |
+| 5 | RTX 3050 | Tag 13–14 | Full Evaluation (3B Modell) | ⏳ **GEPLANT** |
+| 6 | RTX 3050 | Tag 15–16 | Red Teaming (3B Modell) | ⏳ **GEPLANT** |
+| 7-A | H100 | Tag 17 | **Final SFT (32B)** | ⏳ **GEPLANT** |
+| 7-B | H100 | Tag 18 | **Final DPO (32B)** | ⏳ **GEPLANT** |
+| **7-B.1** | **H100** | **Tag 18** | **Final SUA Specialization (32B)** | ⏳ **GEPLANT** |
+| 7-C | H100 | Tag 19 | **Final Calibration (32B)** | ⏳ **GEPLANT** |
+| 7-D | H100 | Tag 20 | **Final Evaluation (32B)** | ⏳ **GEPLANT** |
+
+**Hinweis zu Phase 2.5 (Shadow Loop):** 
+- Der Custom-Loop läuft parallel zum HF-Training (kein Ersatz)
+- Minimales PyTorch-Skript (~200 Zeilen) testet Epistemic Regularization
+- Exit-Kriterium: Shadow-Loop schlägt HF-Loop in ≥2 Metrics → Phase 3 freigeben
 
 ---
 
@@ -390,6 +401,8 @@ confident_wrong       -3.0
 | Overfitting auf Benchmarks | Red-Team + WildBench-Fokus |
 | **Pass@1 Degradation** | **Regression-Tracker + Guardrails (neu)** |
 | **DPO Prompt-Interferenz** | **DPO-Audit vor Training (neu)** |
+| **SUA Overfitting** | **Nur 1-2 Epochen, Low LR (5e-6), Early Stopping** |
+| **SUA-Mode Confusion** | **Mode Confusion Matrix nach Training analysieren** |
 
 ---
 
@@ -403,10 +416,155 @@ confident_wrong       -3.0
 | Abstention AUROC | +15 % |
 | Utility Score | deutlich höher durch korrekte Modi |
 | **Pass@1** | **Stabil oder verbessert (neu)** |
+| **Staleness Detection** | **> 80% (Phase 3.5)** |
+| **Unknown Detection AUROC** | **> 0.85 (Phase 3.5)** |
+| **Ambiguity Resolution** | **> 75% (Phase 3.5)** |
 
 ---
 
-## 17. ENDZIEL
+## 17. STRATEGISCHER RAHMEN: VELOCITY VS. SOVEREIGNTY
+
+### Das Kern-Dilemma
+
+In der KI-Entwicklung existiert ein klassischer Trade-off:
+
+**Feature Velocity**: Schnelles Iterieren mit Hugging Face `trl` + `peft` + `DPOTrainer`
+- ✅ Hohe Experimentiergeschwindigkeit
+- ✅ Minimaler Code-Overhead
+- ❌ Begrenzte Kontrolle über Gradientenfluss, Loss-Design, Sampling-Logik
+
+**Architectural Sovereignty**: Vollständige Kontrolle über Alignment-Prozess
+- ✅ Präzise Steuerung von Loss, Gradienten, Sampling
+- ✅ Custom Loss Functions möglich
+- ✅ Online-Auditing im Training-Loop
+- ❌ Langsamere Iteration, höherer Debugging-Aufwand
+
+### Strategische Regel
+
+| Phase | Priorität | Begründung |
+|-------|-----------|------------|
+| **Phase 1 & 2** | 100% Velocity | Wir müssen zuerst validieren, ob die Diogenes-Daten überhaupt „zünden" |
+| **Phase 3+** | 100% Sovereignty | Wir optimieren nicht nur das Modell, sondern den gesamten Alignment-Prozess |
+
+---
+
+## 18. DECISION GATES – Der intelligente Abzweig
+
+Statt eines starren Phasen-Switches definieren wir **harte, messbare Checkpoints**. Der Wechsel zum Custom-Loop erfolgt erst, wenn **mindestens zwei** der folgenden Bedingungen über **drei aufeinanderfolgende Training-Runs** erfüllt sind.
+
+### Decision Gate Matrix
+
+| Symptom | Ursache | KPI / Schwellenwert | Lösung durch Custom-Loop |
+|---------|---------|---------------------|--------------------------|
+| **Loss-Stagnation** | Standard-Cross-Entropy gewichtet epistemic Uncertainty zu schwach | Plateau über >5% des Trainings (val_loss Δ < 0.001) | **Custom Loss Scaling**: Dynamische Strafe für „confident hallucinations" (epistemic penalty term) |
+| **Mode-Collapse** | DPO verdrängt seltene epistemische Modi | < 15% der generierten Samples zeigen „I don't know"-Verhalten trotz Ground-Truth | **Dynamic Batching + Epistemic Mode Balancing**: Adaptive Mischung pro Batch (rare-mode oversampling) |
+| **Audit-Lag** | Audit-Erkenntnisse fließen zu langsam zurück | > 2 Stunden Delay zwischen Audit und nächstem Training-Step | **Online Rejection Sampling**: Live-Filterung + instant Reward-Update im selben Loop |
+| **Gradient Interference** | SFT- und DPO-Ziele kollidieren (Catastrophic Forgetting) | > 20% Performance-Drop auf alten Fact-Tasks nach DPO | **Multi-Objective Gradient Surgery**: Getrennte Update-Pfade + PCGrad / GradNorm |
+
+### Zusätzlicher Gate (v2.0): Epistemic Drift
+
+**Wenn das Modell bei stabilen Fakten plötzlich >8% „Unsicherheit" produziert → sofortiger Wechsel zu Phase 3.**
+
+---
+
+## 19. VERFEINERTE PHASEN-ARCHITEKTUR (mit klaren Exit-Kriterien)
+
+### Phase 2: Baseline & Stress-Test (Status Quo – 2–3 Wochen)
+
+**Framework:** 100% `trl` + `peft` + `DPOTrainer`
+
+**Ziel:** Erstellen einer Metric-Baseline
+- Win-Rate
+- Epistemic-Score
+- Hallucination-Rate
+- Fact-Retention
+
+**Exit-Kriterium:** Wenn **≥2 Decision-Gates triggern** → sofort weiter zu Phase 2.5
+
+**Warum bleiben?** Ein früher Custom-Loop würde Debugging unmöglich machen (Daten- vs. Code-Fehler).
+
+---
+
+### Phase 2.5: Shadow Loop (Parallel-Experiment – 1–2 Wochen) ⭐ NEU
+
+**Framework:** Der Custom-Loop läuft **neben** dem HF-Training (kein Ersatz, sondern Schatten).
+
+**Technik:** Minimales PyTorch-Skript (nur ~200 Zeilen), das einen Aspekt isoliert (z.B. nur Sampling + Epistemic Regularization).
+
+**Key Innovation: Epistemic Regularization Term**
+
+```
+L_total = L_DPO + λ · max(0, H_pred - H_target)
+              └─────────────────────────────┘
+              Sicherheit in der Unsicherheit
+```
+
+**Ziel:** Das Modell lernt, bei „Ich weiß es nicht"-Fragen **minimal Entropie** zu haben (sich sicher zu sein, dass es unsicher ist).
+
+**Exit-Kriterium:** Shadow-Loop schlägt HF-Loop in **≥2 Metrics** → Phase 3 freigeben.
+
+---
+
+### Phase 3: Diogenes Alignment Engine (ab hier volle Sovereignty) ⭐ NEU
+
+**Paradigmenwechsel:** Vom „Fine-Tuning" zum **Conditioned Alignment**.
+
+**Komponenten:**
+
+1. **In-Loop Auditing**
+   - Modell generiert während Training 8 Samples
+   - Mini-Auditor (Heuristik + kleines Reward-Model) bewertet in <50 ms
+   - Loss wird sofort angepasst
+
+2. **Curriculum Acceleration** (neu & mächtig)
+   - Der Loop trackt pro Epistemic Mode (False Premise, Ambiguity, etc.) die Mastery-Score
+   - Blendet bereits beherrschte Modi automatisch aus
+   - **Bis zu 40% Rechenzeit-Einsparung**
+
+3. **Technische Umsetzung**
+   - Ein einziger `train_step`-Loop mit `torch.autograd`
+   - Custom DataLoader (kein HF-Trainer mehr)
+   - Vollständige Kontrolle über Gradienten, Loss, Sampling
+
+---
+
+## 20. TECHNISCHER BLUEPRINT – Das „Triple-A" Prinzip (Diogenes-spezifisch)
+
+| Prinzip | Beschreibung | Implementierung |
+|---------|--------------|-----------------|
+| **Awareness** | Batch wird beim Laden automatisch klassifiziert (epistemic category via fast Heuristik oder kleines Classifier-Head) | Epistemic Category Classification beim DataLoader |
+| **Assessment** | Gradient wird pro Kategorie gewichtet: `g_scaled = g · w_cat` mit `w_cat = f(current mastery score)` | Category-weighted Gradient Scaling |
+| **Adjustment** | Adaptive LR + Weight-Decay pro Kategorie: Wenn Fact-Modus driftet, wird Weight-Decay automatisch hochgefahren („Drift-Schutz") | Adaptive Learning Rate + Weight Decay per Category |
+
+### Zusätzlich (v2.0):
+
+- **Checkpoint-Resumption** mit State-Dict für alle drei A's (sodass Experimente pausierbar und reproduzierbar sind)
+- **WandB + custom logging** aller epistemic Metrics in Echtzeit
+
+---
+
+## 21. ZUSAMMENFASSUNG & KLARE EMPFEHLUNG
+
+### Die Rennwagen-Metapher (verfeinert)
+
+Behandle den Custom-Loop wie einen **Motorentausch während des Rennens**:
+
+| Phase | Metapher | Beschreibung |
+|-------|----------|--------------|
+| **Phase 2** | Serienmotor | Fahre mit dem Serienmotor (Hugging Face) – lerne die Strecke (Daten) und die Schwachstellen kennen |
+| **Phase 2.5** | Rennmotor in der Garage | Baue den Rennmotor in der Garage (Shadow-Loop) – teste ohne Risiko |
+| **Phase 3** | Motorentausch | Tausche den Motor nur dann aus, wenn du exakt weißt, an welcher Kurve (welchem Failure-Mode) der Serienmotor versagt |
+
+### Vorteil der neuen v2.0-Version
+
+✅ Entscheidungen sind jetzt **datenbasiert** statt gefühlsbasiert  
+✅ Risiko minimiert (Shadow-Loop als Sicherheitsnetz)  
+✅ Bis zu **40% schnellere Iteration** durch Curriculum Acceleration  
+✅ Vollständige **Sovereignty** ab dem Moment, wo sie wirklich zählt
+
+---
+
+## 22. ENDZIEL
 
 **Ein Modell, das lieber ehrlich nicht antwortet als plausibel falsch zu sein.**
 
@@ -471,6 +629,36 @@ Damit wird Qwen3-32B zum verlässlichsten 32B-Wissensassistenten für kritische 
      --output_dir models/dpo_3b_test
    ```
 
+**Phase 3.5: SUA Specialization (Staleness/Unknown/Ambiguity)**
+
+1. **SUA-Dataset generieren:**
+   ```bash
+   python src/diogenes/dataset_generator.py --split sua \
+     --staleness 8000 \
+     --unknown 10000 \
+     --ambiguity 7000
+   ```
+
+2. **SUA Training lokal:**
+   ```bash
+   ./scripts/run_sua_training.sh \
+     --dpo_checkpoint models/dpo_3b_test/final_checkpoint
+   ```
+
+3. **SUA-Metriken evaluieren:**
+   ```bash
+   python src/diogenes/eval_metrics.py \
+     --model_path models/sua_3b_test \
+     --sua
+   ```
+
+4. **Pass@1 Protection Check:**
+   ```bash
+   python3 scripts/pass1_protection_check.py \
+     --model-path models/sua_3b_test \
+     --baseline-pass-at-1 0.75
+   ```
+
 ### ➡️ Nach lokaler Validierung (H100 80GB):
 
 **Phase 7: Produktionstraining mit Qwen3-32B**
@@ -488,6 +676,11 @@ Damit wird Qwen3-32B zum verlässlichsten 32B-Wissensassistenten für kritische 
 3. **DPO Training starten:**
    ```bash
    ssh <user>@<host> 'cd /opt/diogenes && ./train_dpo_final.sh'
+   ```
+
+4. **SUA Specialization starten (Phase 7-B.1):**
+   ```bash
+   ssh <user>@<host> 'cd /opt/diogenes && ./train_sua_final.sh'
    ```
 
 ---

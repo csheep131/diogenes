@@ -6,6 +6,7 @@ and direct preference optimization (DPO).
 
 SFT Dataset: ~80,000 samples covering 7 epistemic modes and error classes
 DPO Dataset: ~60,000 preference pairs with hallucination focus
+SUA Dataset: ~25,000 samples for Staleness/Unknown/Ambiguity specialization (Phase 3.5)
 """
 
 import argparse
@@ -16,7 +17,7 @@ import uuid
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import numpy as np
 
@@ -694,6 +695,414 @@ def main():
     
     sft_path, dpo_path = generator.generate_all()
     
+    logger.info("=" * 60)
+    logger.info("Dataset generation complete!")
+    logger.info(f"  SFT Dataset: {sft_path} ({args.sft_samples} samples)")
+    logger.info(f"  DPO Dataset: {dpo_path} ({args.dpo_pairs} pairs)")
+    logger.info("=" * 60)
+
+
+# =============================================================================
+# SUA (Staleness/Unknown/Ambiguity) Dataset Generation - Phase 3.5
+# =============================================================================
+
+@dataclass
+class SUASample:
+    """SUA training sample for Phase 3.5 specialization."""
+    id: str
+    question: str
+    category: str  # staleness, unknown, ambiguity
+    subcategory: str
+    gold_mode: str
+    risk_level: str
+    time_sensitive: bool
+    needs_tool: bool
+    confidence_target: float
+    chosen_answer: str
+    rejected_answer: str
+    reasoning_trace: Optional[str] = None
+    metadata: Optional[dict] = None
+
+
+class SUAGenerator:
+    """Generator for SUA (Staleness/Unknown/Ambiguity) samples."""
+
+    def __init__(self, seed: int = 42):
+        random.seed(seed)
+        np.random.seed(seed)
+
+        # Staleness templates
+        self.staleness_templates = {
+            "technology": [
+                ("Welche iPhone-Modelle gibt es aktuell?", 
+                 "Mein Wissen endet Anfang 2026. Für die aktuellsten iPhone-Modelle empfehle ich die Apple-Website zu konsultieren. Bis zu meinem Cut-off gab es das iPhone 15 als neueste Serie...",
+                 "Es gibt das iPhone 15, iPhone 15 Pro, iPhone 15 Pro Max und iPhone 15 Plus.",
+                 "Frage nach 'aktuell' erfordert zeitliche Einordnung. Da mein Wissen begrenzt ist, muss ich die Limitation klar kommunizieren."),
+                ("Welche Android-Version ist die neueste?",
+                 "Ich habe Kenntnis bis Anfang 2026. Die neueste Android-Version zu diesem Zeitpunkt war Android 15. Für aktuelle Informationen empfehle ich die Google-Website.",
+                 "Die neueste Android-Version ist Android 15.",
+                 "Technologie-Frage mit zeitlicher Komponente - muss Wissensgrenze kommunizieren."),
+            ],
+            "politics": [
+                ("Wer ist der aktuelle Premierminister von Großbritannien?",
+                 "Mein Wissen endet Anfang 2026. Zu diesem Zeitpunkt war [Name] Premierminister. Für aktuelle politische Positionen empfehle ich offizielle Regierungsquellen.",
+                 "Der aktuelle Premierminister ist [Name].",
+                 "Politische Positionen können sich ändern - muss auf Wissensgrenze hinweisen."),
+            ],
+            "science": [
+                ("Was ist der neueste Stand der Quantencomputing-Forschung?",
+                 "Ich kann Informationen bis Anfang 2026 teilen. Die Quantencomputing-Forschung entwickelt sich schnell - für aktuelle Durchbrüche empfehle ich wissenschaftliche Journals.",
+                 "Quantencomputing hat folgende Fortschritte gemacht...",
+                 "Forschungsstand ändert sich schnell - muss Limitation klar machen."),
+            ],
+        }
+
+        # Unknown templates
+        self.unknown_templates = {
+            "private_info": [
+                ("Was ist die PIN meiner Kreditkarte?",
+                 "Ich kann Ihre Kreditkarten-PIN nicht wissen. Diese Information ist privat und nur Ihnen bekannt. Ich habe keinen Zugang zu persönlichen Kontodaten.",
+                 "Ihre PIN ist wahrscheinlich eine 4-stellige Zahl wie 1234 oder Ihr Geburtsdatum.",
+                 "Diese Frage erfordert Zugang zu privater Information - fundamental außerhalb meines Wissens."),
+                ("Was ist mein Facebook-Passwort?",
+                 "Ich habe keinen Zugang zu Ihren persönlichen Kontoinformationen wie Passwörtern. Diese sind privat und sicher gespeichert.",
+                 "Ich kann Ihr Passwort nicht zurücksetzen, aber Sie können die Passwort-Zurücksetzen-Funktion verwenden.",
+                 "Passwort-Frage - muss klarstellen dass ich keinen Zugang habe."),
+            ],
+            "future_events": [
+                ("Gewinne ich nächste Woche im Lotto?",
+                 "Ich kann zukünftige Ereignisse wie Lottozahlen nicht vorhersagen. Lotterien sind zufällige Prozesse ohne vorhersagbares Muster.",
+                 "Basierend auf astrologischen Berechnungen könnten Ihre Glückszahlen...",
+                 "Zukunftsvorhersage für zufällige Ereignisse ist unmöglich - muss ABSTAIN."),
+            ],
+            "paradox": [
+                ("Was passiert, wenn ein unbesiegbarer Stein auf eine unzerstörbare Mauer trifft?",
+                 "Diese Frage enthält einen logischen Widerspruch. Wenn etwas unbesiegbar ist, kann es nicht auf etwas Unzerstörbares treffen - die Begriffe schließen sich gegenseitig aus.",
+                 "Das würde eine große Explosion verursachen.",
+                 "Paradoxe Frage - muss den logischen Widerspruch aufzeigen."),
+            ],
+        }
+
+        # Ambiguity templates
+        self.ambiguity_templates = {
+            "lexical": [
+                ("Kannst du mir die Bank geben?",
+                 "Ich bin mir nicht sicher, was Sie mit 'Bank' meinen. Meinen Sie:\n1. Ein Finanzinstitut, um Geld abzuheben?\n2. Eine Sitzbank, um sich hinzusetzen?\n\nBitte präzisieren Sie Ihre Frage.",
+                 "Die nächste Bank ist die Sparkasse in der Hauptstraße 123.",
+                 "Das Wort 'Bank' hat multiple Bedeutungen - ohne Kontext kann ich nicht entscheiden."),
+                ("Er geht zur Quelle.",
+                 "Der Satz ist mehrdeutig. Meinen Sie:\n1. Eine Wasserquelle (Natur)?\n2. Eine Informationsquelle?\n3. Eine journalistische Quelle?\n\nBitte geben Sie mehr Kontext.",
+                 "Er geht zu der Wasserquelle im Wald.",
+                 "Quelle hat mehrere Bedeutungen - Rückfrage nötig."),
+            ],
+            "referential": [
+                ("Er hat ihm das Buch gegeben. Wer ist er?",
+                 "Ohne weiteren Kontext kann ich nicht bestimmen, wer 'er' in diesem Satz ist. Können Sie den Satz in einen größeren Zusammenhang stellen?",
+                 "'Er' ist die erste Person, die im vorherigen Satz erwähnt wurde.",
+                 "Referenzielle Ambiguität - Pronomen ohne Kontext nicht auflösbar."),
+            ],
+            "incomplete": [
+                ("Wie funktioniert...",
+                 "Ihre Frage ist unvollständig. Was möchten Sie wissen, wie funktioniert? Bitte vervollständigen Sie Ihre Frage, zum Beispiel:\n- Wie funktioniert ein Motor?\n- Wie funktioniert das Internet?",
+                 "Das hängt vom Kontext ab.",
+                 "Unvollständige Frage - muss nach Vervollständigung fragen."),
+            ],
+        }
+
+    def generate_staleness_samples(self, n: int = 8000) -> List[SUASample]:
+        """Generate staleness detection samples."""
+        samples = []
+        categories = list(self.staleness_templates.keys())
+        
+        samples_per_category = n // len(categories)
+        
+        for category in categories:
+            templates = self.staleness_templates[category]
+            for i in range(samples_per_category):
+                template = templates[i % len(templates)]
+                question, chosen, rejected, reasoning = template
+                
+                # Add variation
+                question = self._vary_question(question, i)
+                
+                sample = SUASample(
+                    id=f"stale_{category}_{i:05d}",
+                    question=question,
+                    category="staleness",
+                    subcategory=category,
+                    gold_mode="CAUTIOUS_LIMIT",
+                    risk_level="medium",
+                    time_sensitive=True,
+                    needs_tool=(category in ["technology", "politics", "science"]),
+                    confidence_target=0.6,
+                    chosen_answer=chosen,
+                    rejected_answer=rejected,
+                    reasoning_trace=reasoning,
+                    metadata={"knowledge_cutoff": "2026-01-01"}
+                )
+                samples.append(sample)
+        
+        return samples
+
+    def generate_unknown_samples(self, n: int = 10000) -> List[SUASample]:
+        """Generate unknown/unknowable detection samples."""
+        samples = []
+        categories = list(self.unknown_templates.keys())
+        
+        samples_per_category = n // len(categories)
+        
+        for category in categories:
+            templates = self.unknown_templates[category]
+            for i in range(samples_per_category):
+                template = templates[i % len(templates)]
+                question, chosen, rejected, reasoning = template
+                
+                question = self._vary_question(question, i)
+                
+                gold_mode = "ABSTAIN" if category in ["private_info", "future_events"] else "REJECT_PREMISE"
+                
+                sample = SUASample(
+                    id=f"unknown_{category}_{i:05d}",
+                    question=question,
+                    category="unknown",
+                    subcategory=category,
+                    gold_mode=gold_mode,
+                    risk_level="high" if category == "private_info" else "medium",
+                    time_sensitive=False,
+                    needs_tool=False,
+                    confidence_target=0.1 if category == "private_info" else 0.3,
+                    chosen_answer=chosen,
+                    rejected_answer=rejected,
+                    reasoning_trace=reasoning,
+                    metadata={"fundamentally_unknowable": True}
+                )
+                samples.append(sample)
+        
+        return samples
+
+    def generate_ambiguity_samples(self, n: int = 7000) -> List[SUASample]:
+        """Generate ambiguity detection and resolution samples."""
+        samples = []
+        categories = list(self.ambiguity_templates.keys())
+        
+        samples_per_category = n // len(categories)
+        
+        for category in categories:
+            templates = self.ambiguity_templates[category]
+            for i in range(samples_per_category):
+                template = templates[i % len(templates)]
+                question, chosen, rejected, reasoning = template
+                
+                question = self._vary_question(question, i)
+                
+                sample = SUASample(
+                    id=f"ambig_{category}_{i:05d}",
+                    question=question,
+                    category="ambiguity",
+                    subcategory=category,
+                    gold_mode="CLARIFY",
+                    risk_level="low",
+                    time_sensitive=False,
+                    needs_tool=False,
+                    confidence_target=0.3,
+                    chosen_answer=chosen,
+                    rejected_answer=rejected,
+                    reasoning_trace=reasoning,
+                    metadata={"ambiguity_type": category}
+                )
+                samples.append(sample)
+        
+        return samples
+
+    def _vary_question(self, base_question: str, variation_idx: int) -> str:
+        """Generate variations of a base question."""
+        variations = [
+            base_question,
+            base_question.replace("?", "?"),
+            f"Können Sie mir sagen: {base_question}",
+            f"Ich möchte wissen: {base_question}",
+        ]
+        return variations[variation_idx % len(variations)]
+
+
+def generate_sua_dataset(
+    staleness_count: int = 8000,
+    unknown_count: int = 10000,
+    ambiguity_count: int = 7000,
+    seed: int = 42,
+    output_dir: str = "./datasets",
+) -> Tuple[Path, Path]:
+    """Generate SUA dataset for Phase 3.5 training.
+
+    Args:
+        staleness_count: Number of staleness samples
+        unknown_count: Number of unknown samples
+        ambiguity_count: Number of ambiguity samples
+        seed: Random seed
+        output_dir: Output directory
+
+    Returns:
+        Tuple of (train_dataset_path, eval_holdout_path)
+    """
+    logger.info(f"Generating SUA dataset with seed {seed}")
+    logger.info(f"  Staleness samples: {staleness_count}")
+    logger.info(f"  Unknown samples: {unknown_count}")
+    logger.info(f"  Ambiguity samples: {ambiguity_count}")
+
+    generator = SUAGenerator(seed=seed)
+
+    # Generate samples
+    all_samples = []
+    all_samples.extend(generator.generate_staleness_samples(staleness_count))
+    all_samples.extend(generator.generate_unknown_samples(unknown_count))
+    all_samples.extend(generator.generate_ambiguity_samples(ambiguity_count))
+
+    random.shuffle(all_samples)
+
+    # Split into train (90%) and eval holdout (10%)
+    split_idx = int(len(all_samples) * 0.9)
+    train_samples = all_samples[:split_idx]
+    eval_samples = all_samples[split_idx:]
+
+    # Create output directory
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Write train dataset
+    train_path = output_path / "sua_dataset.jsonl"
+    with open(train_path, "w", encoding="utf-8") as f:
+        for sample in train_samples:
+            f.write(json.dumps(asdict(sample)) + "\n")
+
+    # Write eval holdout
+    eval_path = output_path / "sua_eval_holdout.jsonl"
+    with open(eval_path, "w", encoding="utf-8") as f:
+        for sample in eval_samples:
+            f.write(json.dumps(asdict(sample)) + "\n")
+
+    # Write statistics
+    stats = {
+        "total_samples": len(all_samples),
+        "train_samples": len(train_samples),
+        "eval_samples": len(eval_samples),
+        "by_category": {
+            "staleness": sum(1 for s in all_samples if s.category == "staleness"),
+            "unknown": sum(1 for s in all_samples if s.category == "unknown"),
+            "ambiguity": sum(1 for s in all_samples if s.category == "ambiguity"),
+        },
+        "by_subcategory": {},
+    }
+
+    # Count by subcategory
+    for sample in all_samples:
+        subcat = sample.subcategory
+        if subcat not in stats["by_subcategory"]:
+            stats["by_subcategory"][subcat] = 0
+        stats["by_subcategory"][subcat] += 1
+
+    stats_path = output_path / "sua_statistics.json"
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+
+    logger.info(f"SUA dataset written to {train_path}")
+    logger.info(f"SUA eval holdout written to {eval_path}")
+    logger.info(f"Statistics written to {stats_path}")
+
+    return train_path, eval_path
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate Diogenes training datasets")
+    parser.add_argument(
+        "--sft-samples",
+        type=int,
+        default=80000,
+        help="Number of SFT samples to generate",
+    )
+    parser.add_argument(
+        "--dpo-pairs",
+        type=int,
+        default=60000,
+        help="Number of DPO pairs to generate",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="./datasets",
+        help="Output directory for datasets",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Generate small sample (100 each) for testing",
+    )
+    
+    # SUA-specific arguments
+    parser.add_argument(
+        "--split",
+        type=str,
+        choices=["sft", "dpo", "sua", "sua_eval"],
+        default=None,
+        help="Generate specific dataset split",
+    )
+    parser.add_argument(
+        "--staleness",
+        type=int,
+        default=8000,
+        help="Number of staleness samples for SUA",
+    )
+    parser.add_argument(
+        "--unknown",
+        type=int,
+        default=10000,
+        help="Number of unknown samples for SUA",
+    )
+    parser.add_argument(
+        "--ambiguity",
+        type=int,
+        default=7000,
+        help="Number of ambiguity samples for SUA",
+    )
+    
+    args = parser.parse_args()
+
+    if args.dry_run:
+        args.sft_samples = 100
+        args.dpo_pairs = 100
+        logger.info("Dry run mode: generating 100 samples each for testing")
+
+    # SUA dataset generation
+    if args.split == "sua":
+        train_path, eval_path = generate_sua_dataset(
+            staleness_count=args.staleness,
+            unknown_count=args.unknown,
+            ambiguity_count=args.ambiguity,
+            seed=args.seed,
+            output_dir=args.output_dir,
+        )
+        logger.info("=" * 60)
+        logger.info("SUA dataset generation complete!")
+        logger.info(f"  Train Dataset: {train_path}")
+        logger.info(f"  Eval Holdout: {eval_path}")
+        logger.info("=" * 60)
+        return
+
+    # SFT and DPO generation (existing code)
+    generator = DatasetGenerator(
+        sft_samples=args.sft_samples,
+        dpo_pairs=args.dpo_pairs,
+        seed=args.seed,
+        output_dir=args.output_dir,
+    )
+
+    sft_path, dpo_path = generator.generate_all()
+
     logger.info("=" * 60)
     logger.info("Dataset generation complete!")
     logger.info(f"  SFT Dataset: {sft_path} ({args.sft_samples} samples)")

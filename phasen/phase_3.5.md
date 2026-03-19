@@ -203,11 +203,11 @@ def generate_staleness_samples(n=8000):
         ("finance", "Finanzregeln/Steuern", 1000),
         ("sports", "Sportrekorde/Tabellen", 1000),
     ]
-    
+
     samples = []
     for category, name, count in categories:
         samples.extend(generate_category_samples(category, count))
-    
+
     return samples
 ```
 
@@ -257,11 +257,11 @@ def generate_unknown_samples(n=10000):
         ("niche_knowledge", "Nischenwissen", 2000),
         ("paradox", "Paradoxe Fragen", 1500),
     ]
-    
+
     samples = []
     for category, name, count in categories:
         samples.extend(generate_category_samples(category, count))
-    
+
     return samples
 ```
 
@@ -316,11 +316,11 @@ def generate_ambiguity_samples(n=7000):
         ("pragmatic", "Pragmatische Ambiguität", 1000),
         ("incomplete", "Unvollständige Queries", 1000),
     ]
-    
+
     samples = []
     for category, name, count in categories:
         samples.extend(generate_category_samples(category, count))
-    
+
     return samples
 ```
 
@@ -340,20 +340,20 @@ model:
 sua_training:
   # Niedrige Learning Rate für Minimal-Invasion
   learning_rate: 5.0e-6
-  
+
   # Weniger Epochen um Overfitting zu vermeiden
   num_train_epochs: 2
-  
+
   # Batch Size für 8GB VRAM
   per_device_train_batch_size: 2
   gradient_accumulation_steps: 8
   effective_batch_size: 16
-  
+
   # Reduzierter LoRA-Rank für schnellere Anpassung
   lora_r: 16  # Reduziert von 32
   lora_alpha: 32  # 2x rank
   lora_dropout: 0.05
-  
+
   # Target Modules (gleiche wie SFT/DPO)
   target_modules:
     - "q_proj"
@@ -363,17 +363,17 @@ sua_training:
     - "gate_proj"
     - "up_proj"
     - "down_proj"
-  
+
   # Memory Optimization
   fp16: true
   optim: "paged_adamw_8bit"
   gradient_checkpointing: true
-  
+
   # Logging & Checkpoints
   logging_steps: 50
   save_steps: 2000
   eval_steps: 1000
-  
+
   # Early Stopping
   early_stopping: true
   early_stopping_patience: 2
@@ -411,19 +411,19 @@ baseline_pass1 = 0.75  # Von Phase 3
 
 for epoch in range(2):
     model_path = f"./models/sua_3b_test/checkpoint_epoch_{epoch}"
-    
+
     # Core Reliability Metrics
     core_metrics = compute_core_reliability_metrics(
         model_path=model_path,
         eval_dataset="datasets/eval_holdout.jsonl",
     )
-    
+
     # SUA-spezifische Metriken
     sua_metrics = compute_sua_metrics(
         model_path=model_path,
         eval_dataset="datasets/sua_eval_holdout.jsonl",
     )
-    
+
     # Pass@1 Protection Test
     result = run_pass1_protection_test(
         current_pass1=core_metrics.pass_at_1,
@@ -431,14 +431,14 @@ for epoch in range(2):
         current_hallucination=core_metrics.hallucination_rate,
         baseline_hallucination=0.05,  # Von Phase 3
     )
-    
+
     print(f"Epoch {epoch}:")
     print(f"  Pass@1: {core_metrics.pass_at_1:.4f} (Baseline: {baseline_pass1:.4f})")
     print(f"  Δ Pass@1: {(core_metrics.pass_at_1 - baseline_pass1)*100:+.2f}%")
     print(f"  Staleness Detection: {sua_metrics.staleness_detection_rate:.4f}")
     print(f"  Unknown AUROC: {sua_metrics.unknown_detection_auroc:.4f}")
     print(f"  Ambiguity Resolution: {sua_metrics.ambiguity_resolution_accuracy:.4f}")
-    
+
     if result.is_regression:
         print(f"  ❌ REGRESSION: {result.regression_severity}")
         print(f"  Empfehlung: Training stoppen oder Hyperparameter anpassen")
@@ -467,11 +467,11 @@ for epoch in range(2):
 def compute_staleness_detection_rate(predictions, ground_truth):
     """
     Berechnet den Anteil korrekt als veraltet markierter Samples.
-    
+
     Args:
         predictions: Liste von Vorhersagen (is_stale: bool, confidence: float)
         ground_truth: Liste von Ground-Truth-Labels (is_stale: bool)
-    
+
     Returns:
         Dictionary mit Metriken
     """
@@ -491,9 +491,9 @@ def compute_staleness_detection_rate(predictions, ground_truth):
         1 for pred, gt in zip(predictions, ground_truth)
         if not pred['is_stale'] and not gt['is_stale']
     )
-    
+
     total_stale = sum(1 for gt in ground_truth if gt['is_stale'])
-    
+
     return {
         'staleness_detection_rate': true_positives / max(total_stale, 1),
         'staleness_false_positive_rate': false_positives / max(true_negatives + false_positives, 1),
@@ -510,17 +510,17 @@ from sklearn.metrics import roc_auc_score
 def compute_unknown_detection_auroc(predictions, ground_truth):
     """
     Berechnet AUROC für Unknown Detection.
-    
+
     Args:
         predictions: Liste von confidence scores für Unknown-Klassifikation
         ground_truth: Liste von Binary-Labels (1=unknown, 0=known)
-    
+
     Returns:
         AUROC Score
     """
     y_scores = [pred['unknown_confidence'] for pred in predictions]
     y_true = [gt['is_unknown'] for gt in ground_truth]
-    
+
     return {
         'unknown_detection_auroc': roc_auc_score(y_true, y_scores),
         'unknown_precision_at_50': compute_precision_at_recall(y_true, y_scores, target_recall=0.5),
@@ -534,11 +534,11 @@ def compute_unknown_detection_auroc(predictions, ground_truth):
 def compute_ambiguity_resolution_accuracy(predictions, ground_truth):
     """
     Berechnet Accuracy für Ambiguity Resolution.
-    
+
     Args:
         predictions: Liste von Vorhersagen (clarification_needed: bool, clarification: str)
         ground_truth: Liste von Ground-Truth-Labels (needs_clarification: bool, gold_clarification: str)
-    
+
     Returns:
         Dictionary mit Metriken
     """
@@ -547,14 +547,14 @@ def compute_ambiguity_resolution_accuracy(predictions, ground_truth):
         1 for pred, gt in zip(predictions, ground_truth)
         if pred['clarification_needed'] == gt['needs_clarification']
     )
-    
+
     # Clarification Quality (semantic similarity)
     clarification_scores = []
     for pred, gt in zip(predictions, ground_truth):
         if gt['needs_clarification']:
             score = semantic_similarity(pred['clarification'], gt['gold_clarification'])
             clarification_scores.append(score)
-    
+
     return {
         'ambiguity_resolution_accuracy': correct_clarification / len(predictions),
         'clarification_quality_score': sum(clarification_scores) / max(len(clarification_scores), 1),
@@ -568,7 +568,7 @@ def compute_ambiguity_resolution_accuracy(predictions, ground_truth):
 def compute_combined_sua_score(staleness_metrics, unknown_metrics, ambiguity_metrics):
     """
     Berechnet einen kombinierten SUA-Gesamtscore.
-    
+
     Gewichtung:
     - Staleness: 30%
     - Unknown: 40% (höchste Priorität für epistemische Zuverlässigkeit)
@@ -579,7 +579,7 @@ def compute_combined_sua_score(staleness_metrics, unknown_metrics, ambiguity_met
         0.40 * unknown_metrics['unknown_detection_auroc'] +
         0.30 * ambiguity_metrics['clarification_quality_score']
     )
-    
+
     return {
         'combined_sua_score': score,
         'staleness_contribution': 0.30 * staleness_metrics['staleness_f1'],
@@ -652,22 +652,22 @@ python3 src/diogenes/train_sua.py \
 sua:
   # Learning Rate (niedrig für Minimal-Invasion)
   learning_rate: 5.0e-6
-  
+
   # Epochen (weniger als SFT/DPO)
   num_train_epochs: 2
-  
+
   # Batch Size für 8GB VRAM
   per_device_train_batch_size: 2
   gradient_accumulation_steps: 8
-  
+
   # Reduzierter LoRA-Rank
   lora_r: 16
   lora_alpha: 32
-  
+
   # Early Stopping
   early_stopping: true
   early_stopping_patience: 2
-  
+
   # SUA-spezifische Thresholds
   thresholds:
     staleness_confidence: 0.6

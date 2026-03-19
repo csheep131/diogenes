@@ -1,6 +1,6 @@
 # Diogenes – The Reliable 32B
 
-**Version 5** | **Stand:** 18. März 2026
+**Version 7** | **Stand:** 19. März 2026
 
 A specialized language model based on **Qwen3-32B**, optimized for **epistemic reliability**.
 
@@ -20,7 +20,7 @@ The model is designed for deployment in critical domains (IT, manufacturing, med
 
 ## Current Status
 
-**As of March 18, 2026, 21:00 UTC**
+**As of March 19, 2026, 00:00 UTC**
 
 ### Development Workflow
 
@@ -63,8 +63,88 @@ The model is designed for deployment in critical domains (IT, manufacturing, med
 
 ### ⏳ Planned
 
-- **Phase 4-6**: Calibration, Evaluation, Red Teaming (after Phase 3)
+- **Phase 2.5**: Shadow Loop ⏳ **GEPLANT** (nach Phase 2)
+  - Parallel-Experiment: Custom-Loop läuft neben HF-Training
+  - Epistemic Regularization: `L_total = L_DPO + λ · max(0, H_pred - H_target)`
+  - Minimal PyTorch script (~200 lines) testing isolated aspects
+  - Exit-criterion: Shadow-Loop beats HF-Loop in ≥2 metrics → unlock Phase 3
+
+- **Phase 3.5**: SUA Specialization ⏳ **GEPLANT** (nach Phase 3)
+  - Staleness/Unknown/Ambiguity Fine-Tuning
+  - Dataset: 25k spezialisierte Samples (8k stale, 10k unknown, 7k ambiguity)
+  - Low-Rate Fine-Tuning (LR=5e-6, 1-2 Epochen) für Minimal-Invasion
+  - Pass@1 Protection: Obligatorische Checks nach jedem Epoch
+  - Expected duration: ~8-12 hours on RTX 3050
+
+- **Phase 4-6**: Calibration, Evaluation, Red Teaming (after Phase 3.5)
 - **Phase 7**: Final Production Training on H100 (pending local validation)
+
+---
+
+## Training Strategy v2.0: Velocity vs. Sovereignty ⭐ NEU
+
+### The Core Dilemma
+
+In AI development, there's a classic trade-off:
+
+**Feature Velocity**: Fast iteration with Hugging Face `trl` + `peft` + `DPOTrainer`
+- ✅ High experiment velocity
+- ✅ Minimal code overhead
+- ❌ Limited control over gradient flow, loss design, sampling logic
+
+**Architectural Sovereignty**: Complete control over alignment process
+- ✅ Precise control of loss, gradients, sampling
+- ✅ Custom loss functions possible
+- ✅ Online auditing in training loop
+- ❌ Slower iteration, higher debugging effort
+
+### Strategic Rule
+
+| Phase | Priority | Rationale |
+|-------|----------|-----------|
+| **Phase 1 & 2** | 100% Velocity | We must first validate whether Diogenes data actually "ignites" |
+| **Phase 3+** | 100% Sovereignty | We optimize not just the model, but the entire alignment process |
+
+---
+
+### Decision Gates: When to Switch?
+
+Instead of a rigid phase switch, we define **hard, measurable checkpoints**. Switch to Custom-Loop only when **at least two** of the following conditions are met across **three consecutive training runs**:
+
+| Symptom | Cause | KPI / Threshold | Solution via Custom-Loop |
+|---------|-------|-----------------|--------------------------|
+| **Loss Stagnation** | Standard CE weights epistemic uncertainty too weakly | Plateau over >5% of training (val_loss Δ < 0.001) | **Custom Loss Scaling**: Dynamic penalty for "confident hallucinations" |
+| **Mode Collapse** | DPO suppresses rare epistemic modes | < 15% of generated samples show "I don't know" behavior despite ground-truth | **Dynamic Batching + Mode Balancing**: Adaptive mixing per batch (rare-mode oversampling) |
+| **Audit Lag** | Audit insights flow back too slowly | > 2 hours delay between audit and next training step | **Online Rejection Sampling**: Live filtering + instant reward update in same loop |
+| **Gradient Interference** | SFT and DPO objectives collide (Catastrophic Forgetting) | > 20% performance drop on old fact-tasks after DPO | **Multi-Objective Gradient Surgery**: Separate update paths + PCGrad / GradNorm |
+
+**Additional Gate (v2.0): Epistemic Drift** → If the model suddenly produces >8% "uncertainty" on stable facts → immediate switch to Phase 3.
+
+---
+
+### Phase Architecture with Exit Criteria
+
+**Phase 2: Baseline & Stress-Test (2-3 weeks)**
+- Framework: 100% `trl` + `peft` + `DPOTrainer`
+- Goal: Establish metric baseline (Win-Rate, Epistemic-Score, Hallucination-Rate, Fact-Retention)
+- Exit-criterion: If **≥2 Decision Gates trigger** → immediately proceed to Phase 2.5
+
+**Phase 2.5: Shadow Loop (1-2 weeks) ⭐ NEW**
+- Framework: Custom-Loop runs **alongside** HF training (not replacement, but shadow)
+- Technique: Minimal PyTorch script (~200 lines) isolating one aspect (e.g., Sampling + Epistemic Regularization)
+- Key Innovation: **Epistemic Regularization Term**
+  ```
+  L_total = L_DPO + λ · max(0, H_pred - H_target)
+  ```
+- Goal: Model learns to have **minimal entropy** on "I don't know" questions (being sure about being unsure)
+- Exit-criterion: Shadow-Loop beats HF-Loop in **≥2 metrics** → unlock Phase 3
+
+**Phase 3: Diogenes Alignment Engine (full sovereignty) ⭐ NEW**
+- Paradigm shift: From "Fine-Tuning" to **Conditioned Alignment**
+- Components:
+  1. **In-Loop Auditing**: Model generates 8 samples during training → Mini-auditor evaluates in <50ms → Loss adjusted immediately
+  2. **Curriculum Acceleration**: Loop tracks Mastery-Score per epistemic mode → automatically fades out mastered modes (up to 40% compute savings)
+  3. **Technical Implementation**: Single `train_step` loop with `torch.autograd` + custom DataLoader (no HF trainer anymore)
 
 ---
 
@@ -209,22 +289,26 @@ diogenes/
 │   └── diogenes/            # Main package
 │       ├── __init__.py
 │       ├── config.py        # Configuration management
-│       ├── dataset_generator.py  # SFT/DPO data generation
+│       ├── dataset_generator.py  # SFT/DPO/SUA data generation
 │       ├── dpo_audit.py     # DPO-Audit for prompt interference (NEU)
-│       ├── eval_metrics.py  # Core reliability metrics
+│       ├── eval_metrics.py  # Core reliability metrics + SUA (Tier 3)
 │       ├── inference.py     # Inference engine
 │       ├── model.py         # Model loading/wrapping
 │       ├── pass1_protection.py  # Regression detection
 │       ├── train_sft.py     # SFT training script
-│       └── train_dpo.py     # DPO training script
+│       ├── train_dpo.py     # DPO training script
+│       └── train_sua.py     # SUA training script (Phase 3.5, NEU)
 ├── configs/                 # Configuration files
 │   ├── config.yaml
 │   └── remote_config.yaml
 ├── datasets/                # Training/evaluation datasets
 │   ├── sft_dataset.jsonl    (80k samples)
 │   ├── dpo_dataset.jsonl    (60k pairs)
+│   ├── sua_dataset.jsonl    (22.5k samples, Phase 3.5)
+│   ├── sua_eval_holdout.jsonl (2.5k samples)
 │   ├── sft_statistics.json
-│   └── dpo_statistics.json
+│   ├── dpo_statistics.json
+│   └── sua_statistics.json
 ├── models/                  # Model checkpoints
 ├── scripts/                 # Utility scripts
 │   ├── download_model.py
@@ -232,16 +316,19 @@ diogenes/
 │   ├── test_inference.py
 │   ├── setup_env.py
 │   ├── prepare_remote_machine.py
-│   ├── run_dpo_training.sh  # DPO-Training Script (NEU)
-│   └── pass1_protection_check.py  # Pass@1 Check (NEU)
+│   ├── run_dpo_training.sh  # DPO-Training Script
+│   ├── run_sua_training.sh  # SUA-Training Script (Phase 3.5, NEU)
+│   └── pass1_protection_check.py  # Pass@1 Check
 ├── tests/                   # Test suite
 ├── docs/                    # Documentation
 │   ├── IMPLEMENTATION_SUMMARY.md
 │   ├── PASS1_GUARDRAILS.md
 │   ├── phase0_quickstart.md
-│   └── phase3_dpo_ready.md  # Phase 3 Anleitung (NEU)
+│   ├── phase3_dpo_ready.md  # Phase 3 Anleitung
+│   └── phase3.5_sua_ready.md  # Phase 3.5 Anleitung (NEU)
 ├── phasen/                  # Phase documentation (DE)
 │   ├── phase_0.md through phase_7.md
+│   └── phase_3.5.md  # SUA Specialization (NEU)
 ├── pyproject.toml           # Project configuration
 └── README.md                # This file
 ```
@@ -317,7 +404,9 @@ print(response)
 | **Phase 0** | Qwen3-0.6B | < 1 day | ✅ **ABGESCHLOSSEN** |
 | **Phase 1** | Qwen3-0.6B | 1-2 days | ✅ **ABGESCHLOSSEN** |
 | **Phase 2** | Qwen2.5-3B | ~30 hours | 🔄 **LÄUFT** (1%) |
+| **Phase 2.5** | Qwen2.5-3B | ~8-12 hours | ⏳ **GEPLANT** (Shadow Loop) |
 | **Phase 3** | Qwen2.5-3B | ~15-20 hours | 📋 **BEREIT** |
+| **Phase 3.5** | Qwen2.5-3B | ~8-12 hours | ⏳ **GEPLANT** (SUA Specialization) |
 | **Phase 4** | Qwen2.5-3B | 1 day | ⏳ **GEPLANT** |
 | **Phase 5** | Qwen2.5-3B | 1-2 days | ⏳ **GEPLANT** |
 | **Phase 6** | Qwen2.5-3B | 1-2 days | ⏳ **GEPLANT** |
@@ -328,6 +417,7 @@ print(response)
 |-------|-------|----------|--------|
 | **Phase 7-A** | Qwen3-32B | ~4 hours | ⏳ **GEPLANT** |
 | **Phase 7-B** | Qwen3-32B | ~6 hours | ⏳ **GEPLANT** |
+| **Phase 7-B.1** | Qwen3-32B | ~2 hours | ⏳ **GEPLANT** (SUA Specialization) |
 | **Phase 7-C** | Qwen3-32B | ~2 hours | ⏳ **GEPLANT** |
 | **Phase 7-D** | Qwen3-32B | ~4 hours | ⏳ **GEPLANT** |
 
@@ -356,6 +446,17 @@ print(response)
 
 > **⚠️ Pass@1 Protection**: Tier 2 metrics are NEVER used for checkpoint promotion or global reward optimization. See `docs/PASS1_GUARDRAILS.md`.
 
+### Tier 3: SUA Metrics (Phase 3.5 Specialization)
+
+| Metric | Description | Target |
+|--------|-------------|--------|
+| **Staleness Detection Rate** | % korrekt als veraltet markierter Samples | > 80% |
+| **Staleness False Positive Rate** | % fälschlich als veraltet markierter Samples | < 10% |
+| **Unknown Detection AUROC** | Fläche unter ROC-Kurve für Wissenslücken | > 0.85 |
+| **Unknown Precision** | Präzision bei Unknown-Vorhersagen | > 75% |
+| **Ambiguity Resolution Accuracy** | % korrekt aufgelöster mehrdeutiger Anfragen | > 75% |
+| **Clarification Quality Score** | Qualität der Rückfragen (1-5 Skala) | > 3.5 |
+
 ### Traditional Benchmarks
 
 - **TruthfulQA**: Target +8–15%
@@ -368,6 +469,8 @@ print(response)
 
 ## Expected Results
 
+### Core Reliability Metrics
+
 | Metric | Target Improvement |
 |--------|-------------------|
 | TruthfulQA | +8–15% |
@@ -375,6 +478,15 @@ print(response)
 | ECE | –40% |
 | Abstention AUROC | +15% |
 | Utility Score | Significantly higher |
+
+### SUA Specialization Metrics (Phase 3.5)
+
+| Metric | Target |
+|--------|--------|
+| **Staleness Detection Rate** | > 80% |
+| **Unknown Detection AUROC** | > 0.85 |
+| **Ambiguity Resolution Accuracy** | > 75% |
+| **Pass@1 Degradation** | < 1% (PRIMARY) |
 
 ---
 
@@ -444,7 +556,11 @@ Contributions are welcome! Please read our contributing guidelines before submit
 ## Quick Links
 
 - **Phase Documentation**: `phasen/phase_0.md` – `phasen/phase_7.md`
+- **Phase 2.5 (Shadow Loop)**: `phasen/phase_2.5.md` ⭐ **NEU**
+- **Phase 3 (Alignment Engine)**: `phasen/phase_3.md` ⭐ **NEU**
+- **Phase 3.5 (SUA Specialization)**: `phasen/phase_3.5.md`
 - **Pass@1 Guardrails**: `docs/PASS1_GUARDRAILS.md`
 - **Phase 3 Guide**: `docs/phase3_dpo_ready.md`
 - **Implementation Summary**: `docs/IMPLEMENTATION_SUMMARY.md`
 - **RTX 3050 Setup**: `docs/phase0_quickstart.md`
+- **Training Strategy v2.0**: Siehe `roadmap.md#17-strategischer-rahmen-velocity-vs-sovereignty`
