@@ -22,6 +22,21 @@ lora:
     - "down_proj"
   dropout: 0.05
 
+# Attention Residuals (AttnRes) settings
+# Based on: arXiv:2603.15031
+# Replaces fixed residual connections with learned attention weights
+attnres:
+  enabled: false  # Set to true to enable AttnRes
+  variant: "full"  # "full" or "block"
+    # full: Each layer attends over all preceding outputs (max flexibility)
+    # block: Layers grouped into blocks, attends within block only (memory efficient)
+  num_blocks: 8  # For block variant: number of blocks (e.g., 8 blocks for 32 layers = 4 layers/block)
+  apply_to: "both"  # Where to apply: "attention", "mlp", or "both"
+  init_scale: 0.02  # Initialization scale for query weights
+  dropout: 0.0  # Dropout rate for attention weights
+  use_layer_norm: true  # Apply LayerNorm before attention computation
+  cache_on_cpu: false  # Cache layer outputs on CPU to save VRAM (useful for 8GB GPUs)
+
 # Training settings
 training:
   output_dir: "./output"

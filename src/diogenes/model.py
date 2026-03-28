@@ -15,6 +15,13 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
+# Optional import for AttnRes (only if installed)
+try:
+    from diogenes.attnres import AttnResConfig, AttnResVariant, AttnResWrapper
+    ATTNRES_AVAILABLE = True
+except ImportError:
+    ATTNRES_AVAILABLE = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +168,76 @@ class DiogenesModel:
         self.model.save_pretrained(save_path)
         self.tokenizer.save_pretrained(save_path)
         logger.info(f"Model saved to: {save_path}")
+    
+    def enable_attnres(
+        self,
+        variant: str = "full",
+        num_blocks: int = 8,
+        apply_to: str = "both",
+        init_scale: float = 0.02,
+        dropout: float = 0.0,
+        use_layer_norm: bool = True,
+        cache_on_cpu: bool = False,
+    ) -> None:
+        """Enable Attention Residuals (AttnRes).
+        
+        AttnRes replaces fixed-weight residual connections with learned,
+        input-dependent attention weights over preceding layer outputs.
+        
+        Based on: arXiv:2603.15031 (Attention Residuals)
+        
+        Args:
+            variant: AttnRes variant ("full" or "block")
+                - "full": Each layer attends over all preceding outputs
+                - "block": Layers grouped into blocks, attends within block only
+            num_blocks: Number of blocks for Block variant (default: 8)
+            apply_to: Where to apply AttnRes ("attention", "mlp", or "both")
+            init_scale: Initialization scale for query weights
+            dropout: Dropout rate for attention weights
+            use_layer_norm: Apply LayerNorm before attention computation
+            cache_on_cpu: Cache layer outputs on CPU to save VRAM
+        
+        Raises:
+            ImportError: If attnres module is not available
+            ValueError: If variant is invalid
+        
+        Example:
+            >>> model = DiogenesModel.from_pretrained("Qwen/Qwen3-0.6B")
+            >>> model.enable_attnres(variant="full")
+            >>> # Or use Block variant for memory efficiency
+            >>> model.enable_attnres(variant="block", num_blocks=8)
+        """
+        if not ATTNRES_AVAILABLE:
+            raise ImportError(
+                "AttnRes module not available. Install with: "
+                "pip install -e '.[attnres]' (if available) or ensure "
+                "src/diogenes/attnres/ exists"
+            )
+        
+        logger.info(f"Enabling AttnRes: variant={variant}, num_blocks={num_blocks}")
+        
+        # Map variant string to enum
+        variant_enum = AttnResVariant(variant)
+        
+        config = AttnResConfig(
+            variant=variant_enum,
+            hidden_size=self.model.config.hidden_size,
+            num_layers=self.model.config.num_hidden_layers,
+            num_blocks=num_blocks,
+            init_scale=init_scale,
+            dropout=dropout,
+            use_layer_norm=use_layer_norm,
+            cache_on_cpu=cache_on_cpu,
+            apply_to=apply_to,
+        )
+        
+        wrapper = AttnResWrapper(self.model, config, apply_to=apply_to)
+        self.model = wrapper.wrap()
+        
+        logger.info(
+            f"AttnRes enabled successfully: variant={variant}, "
+            f"layers={config.num_layers}, hidden={config.hidden_size}"
+        )
 
     @classmethod
     def load(cls, model_path: Union[str, Path], attn_implementation: str = "eager") -> "DiogenesModel":
