@@ -1,10 +1,17 @@
 # MASTERPLAN – THE RELIABLE 32B
 
-**Version 7**
+**Version 8**
 
-**Stand:** 19. März 2026
+**Stand:** 9. Mai 2026
 
-**Status:** Phase 0-1 abgeschlossen · Phase 2-6 auf RTX 3050 (8GB) · Phase 7 auf H100 · Phase 2.5 + 3 neu hinzugefügt
+**Status:** Phase 0-1 ✅ abgeschlossen · Phase 2 READY TO START · Datasets generiert · Tests erweitert · Smoke Test läuft
+
+---
+
+## Versionshistorie
+
+- **v8** (09.05.2026): Project Restart — Environment validiert, Tests erweitert (+41), Datasets generiert (SFT 80k, DPO 60k, SUA 25k), Smoke Test gestartet, AttnRes Bug in Tests identifiziert
+- **v7** (19.03.2026): Phase 0-1 abgeschlossen · Phase 2-6 auf RTX 3050 (8GB) · Phase 7 auf H100 · Phase 2.5 + 3 neu hinzugefügt
 
 ---
 
@@ -371,7 +378,7 @@ confident_wrong       -3.0
 |-------|----------|------|---------|--------|
 | 0 | RTX 3050 | Tag 0 | Repo + Infrastruktur + Pipeline | ✅ **ABGESCHLOSSEN** |
 | 1 | RTX 3050 | Tag 1–2 | Dataset Generator + Scripts | ✅ **ABGESCHLOSSEN** |
-| 2 | RTX 3050 | Tag 3–5 | SFT Testing (3B Modell) | 🔄 **IN PROGRESS** |
+| 2 | RTX 3050 | Tag 3–5 | SFT Testing (3B Modell) | 🟢 **READY TO START** |
 | 3 | RTX 3050 | Tag 6–8 | DPO Testing (3B Modell) | ⏳ **GEPLANT** |
 | **2.5** | **RTX 3050** | **Tag 8–10** | **Shadow Loop (Parallel-Experiment)** | ⏳ **GEPLANT** |
 | **3.5** | **RTX 3050** | **Tag 10–11** | **SUA Specialization (Staleness/Unknown/Ambiguity)** | ⏳ **GEPLANT** |
@@ -574,14 +581,20 @@ Damit wird Qwen3-32B zum verlässlichsten 32B-Wissensassistenten für kritische 
 
 ## 18. NÄCHSTE SCHRITTE
 
-### ✅ Bereits implementiert:
+### ✅ Bereits implementiert (Stand 09.05.2026):
 
-- `dataset_generator.py` – SFT/DPO Datengenerierung
-- `train_sft.py` – SFT Training mit LoRA/QLoRA
-- `train_dpo.py` – DPO Training mit Hallucination Penalty
-- `eval_metrics.py` – Core Reliability Metrics + Pass@1 Schutz
-- `pass1_protection.py` – Regression Detection + DPO Audit
-- `docs/PASS1_GUARDRAILS.md` – Produkt-Richtlinien
+- `dataset_generator.py` – SFT/DPO/SUA Datengenerierung ✅ **Datasets generiert**
+- `train_sft.py` – SFT Training mit LoRA/QLoRA ✅ **Tests erweitert**
+- `train_dpo.py` – DPO Training mit Hallucination Penalty ✅ **Tests erweitert**
+- `train_sua.py` – SUA Specialization Training ✅
+- `eval_metrics.py` – Core Reliability Metrics + Pass@1 Schutz ✅
+- `pass1_protection.py` – Regression Detection + DPO Audit ✅
+- `docs/PASS1_GUARDRAILS.md` – Produkt-Richtlinien ✅
+- `inference.py` – Inference Engine mit Mode Detection ✅ **Tests erweitert**
+- `model.py` – DiogenesModel mit LoRA + AttnRes ✅ **Tests erweitert**
+- **Tests:** 41 neue Tests (test_model, test_inference, test_train_sft, test_train_dpo)
+- **Datasets:** SFT 80k, DPO 60k, SUA 25k generiert und validiert
+- **Smoke Test:** Pipeline-Validierung mit Qwen3-0.6B läuft
 
 ### ➡️ Jetzt ausführen (RTX 3050 8GB):
 

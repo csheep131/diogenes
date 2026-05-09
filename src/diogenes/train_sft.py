@@ -143,12 +143,12 @@ def format_sft_sample(example: dict, tokenizer, max_length: int = 2048) -> dict:
         text,
         truncation=True,
         max_length=max_length,
-        padding=False,
+        padding="max_length",
         return_tensors=None,
     )
-    
+
     # Create labels (copy of input_ids for supervised learning)
-    tokenized["labels"] = tokenized["input_ids"].copy()
+    tokenized["labels"] = list(tokenized["input_ids"])
     
     return tokenized
 
