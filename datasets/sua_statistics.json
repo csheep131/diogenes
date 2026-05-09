@@ -1,0 +1,21 @@
+{
+  "total_samples": 24996,
+  "train_samples": 22496,
+  "eval_samples": 2500,
+  "by_category": {
+    "staleness": 7998,
+    "unknown": 9999,
+    "ambiguity": 6999
+  },
+  "by_subcategory": {
+    "politics": 2666,
+    "paradox": 3333,
+    "lexical": 2333,
+    "referential": 2333,
+    "private_info": 3333,
+    "future_events": 3333,
+    "incomplete": 2333,
+    "science": 2666,
+    "technology": 2666
+  }
+}

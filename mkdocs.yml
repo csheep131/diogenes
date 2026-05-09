@@ -1,0 +1,10 @@
+site_name: Diogenes
+site_description: Specialized 32B Language Model - Fine-tuned für spezifische Aufgaben.
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Deployment: deployment.md
+
+plugins:
+  - techdocs-core

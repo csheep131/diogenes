@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/python *)",
+      "Bash(.venv/bin/pip *)",
+      "mcp__socraticode__codebase_index",
+      "mcp__socraticode__codebase_status"
+    ]
+  },
+  "$version": 4
+}
