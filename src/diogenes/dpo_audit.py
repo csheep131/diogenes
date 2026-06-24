@@ -149,9 +149,9 @@ def check_dpo_for_prompt_interference(data: list[dict]) -> DPOAuditResult:
     if concerns:
         logger.warning(f"Found {len(concerns)} concerns:")
         for concern in concerns:
-            logger.warning(f"  - {concern}")
+            logger.warning(f"- {concern}")
     else:
-        logger.info("✓ DPO dataset passed audit")
+        logger.info("DPO dataset passed audit")
     
     return DPOAuditResult(
         total_pairs=len(data),
@@ -243,11 +243,11 @@ def main():
     print("-" * 60)
     
     if result.passed:
-        print("✓ AUDIT PASSED - Safe to proceed with DPO training")
+        print("AUDIT PASSED - Safe to proceed with DPO training")
     else:
-        print("❌ AUDIT FAILED - Review concerns before training:")
+        print("AUDIT FAILED - Review concerns before training:")
         for concern in result.concerns:
-            print(f"  - {concern}")
+            print(f"- {concern}")
     
     print("=" * 60)
     

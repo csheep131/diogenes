@@ -71,16 +71,16 @@ def run_pass1_protection_check(
         is_regression = True
         severity = "critical"
         recommendation = "DO NOT PROMOTE"
-        logger.error(f"❌ CRITICAL REGRESSION: Pass@1 ↓ {pass1_delta:.4f}, Pass@{k} ↑ {passk_delta:.4f}")
+        logger.error(f"CRITICAL REGRESSION: Pass@1 {pass1_delta:.4f}, Pass@{k} +{passk_delta:.4f}")
     elif pass1_delta < -0.01 and passk_delta > 0.005:
         is_regression = True
         severity = "warning"
         recommendation = "REVIEW CAREFULLY"
-        logger.warning(f"⚠️  WARNING: Pass@1 ↓ {pass1_delta:.4f}, Pass@{k} ↑ {passk_delta:.4f}")
+        logger.warning(f"WARNING: Pass@1 {pass1_delta:.4f}, Pass@{k} +{passk_delta:.4f}")
     elif pass1_delta > 0.01:
-        logger.info(f"✓ IMPROVEMENT: Pass@1 ↑ {pass1_delta:.4f}")
+        logger.info(f"IMPROVEMENT: Pass@1 +{pass1_delta:.4f}")
     else:
-        logger.info(f"✓ STABLE: Pass@1 Δ {pass1_delta:.4f}")
+        logger.info(f"STABLE: Pass@1 delta {pass1_delta:.4f}")
     
     return {
         "model_path": model_path,
@@ -164,19 +164,19 @@ def main():
     print(f"Baseline Pass@1: {result['baseline_pass_at_1']:.4f}")
     print(f"Baseline Pass@{result['k']}: {result['baseline_pass_at_k']:.4f}")
     print("-" * 60)
-    print(f"Current Pass@1: {result['current_pass_at_1']:.4f} (Δ {result['pass1_delta']:+.4f})")
-    print(f"Current Pass@{result['k']}: {result['current_pass_at_k']:.4f} (Δ {result['passk_delta']:+.4f})")
+    print(f"Current Pass@1: {result['current_pass_at_1']:.4f} (delta {result['pass1_delta']:+.4f})")
+    print(f"Current Pass@{result['k']}: {result['current_pass_at_k']:.4f} (delta {result['passk_delta']:+.4f})")
     print("-" * 60)
     
     if result['severity'] == 'critical':
-        print(f"❌ CRITICAL REGRESSION DETECTED")
-        print(f"   Recommendation: {result['recommendation']}")
+        print(f"CRITICAL REGRESSION DETECTED")
+        print(f"  Recommendation: {result['recommendation']}")
     elif result['severity'] == 'warning':
-        print(f"⚠️  WARNING: Potential regression")
-        print(f"   Recommendation: {result['recommendation']}")
+        print(f"WARNING: Potential regression")
+        print(f"  Recommendation: {result['recommendation']}")
     else:
-        print(f"✓ NO REGRESSION DETECTED")
-        print(f"   Recommendation: {result['recommendation']}")
+        print(f"NO REGRESSION DETECTED")
+        print(f"  Recommendation: {result['recommendation']}")
     
     print("=" * 60)
     print(f"Report saved to: {args.output_path}")

@@ -45,10 +45,10 @@ class AppState:
             )
             self.inference = DiogenesInference(self.model)
             self.model_name = model_name
-            return f"✅ Model loaded: {model_name}"
+            return f" Model loaded: {model_name}"
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
-            return f"❌ Failed to load model: {str(e)}"
+            return f" Failed to load model: {str(e)}"
 
     def set_storage(self, storage_path: str, backend: str = "jsonl") -> str:
         """Set up storage."""
@@ -56,10 +56,10 @@ class AppState:
             if self.storage:
                 self.storage.close()
             self.storage = TestStorage(storage_path, backend)
-            return f"✅ Storage initialized: {storage_path}"
+            return f" Storage initialized: {storage_path}"
         except Exception as e:
             logger.error(f"Failed to initialize storage: {e}")
-            return f"❌ Failed to initialize storage: {str(e)}"
+            return f" Failed to initialize storage: {str(e)}"
 
     def add_to_history(self, result: dict[str, Any]) -> None:
         """Add result to history."""
@@ -99,7 +99,7 @@ def run_inference(
     """
     if state.inference is None:
         return (
-            "⚠️ Please load a model first using the Model tab.",
+            " Please load a model first using the Model tab.",
             "",
             "",
             "",
@@ -147,17 +147,7 @@ def run_inference(
         state.add_to_history(record)
 
         # Format response
-        mode_emoji = {
-            EpistemicMode.DIRECT_ANSWER.value: "✅",
-            EpistemicMode.CAUTIOUS_LIMIT.value: "⚠️",
-            EpistemicMode.ABSTAIN.value: "🚫",
-            EpistemicMode.CLARIFY.value: "❓",
-            EpistemicMode.REJECT_PREMISE.value: "❌",
-            EpistemicMode.REQUEST_TOOL.value: "🔧",
-            EpistemicMode.PROBABILISTIC.value: "🎲",
-        }
-
-        mode_display = f"{mode_emoji.get(result.epistemic_mode.value, '')} {result.epistemic_mode.value}"
+        mode_display = result.epistemic_mode.value
 
         return (
             result.text,
@@ -169,7 +159,7 @@ def run_inference(
     except Exception as e:
         logger.error(f"Inference error: {e}")
         return (
-            f"❌ Error: {str(e)}",
+            f" Error: {str(e)}",
             "",
             "",
             "",
@@ -219,7 +209,7 @@ def run_comparison(
 
     except Exception as e:
         logger.error(f"Comparison error: {e}")
-        error_msg = f"❌ Error: {str(e)}"
+        error_msg = f" Error: {str(e)}"
         return (error_msg, "", "", error_msg, "", "")
 
 
@@ -232,10 +222,10 @@ def load_suite(suite_path: str) -> str:
     """Load a test suite."""
     try:
         suite = TestSuite.from_json(suite_path)
-        return f"✅ Loaded suite: {suite.name} ({len(suite.test_cases)} test cases)"
+        return f" Loaded suite: {suite.name} ({len(suite.test_cases)} test cases)"
     except Exception as e:
         logger.error(f"Failed to load suite: {e}")
-        return f"❌ Failed to load suite: {str(e)}"
+        return f" Failed to load suite: {str(e)}"
 
 
 def run_suite(
@@ -246,7 +236,7 @@ def run_suite(
 ) -> str:
     """Run a complete test suite."""
     if state.inference is None:
-        return "⚠️ Please load a model first."
+        return " Please load a model first."
 
     try:
         suite = TestSuite.from_json(suite_path)
@@ -263,11 +253,11 @@ def run_suite(
 
         runner.close()
 
-        return f"✅ Completed {len(results)} tests from suite '{suite.name}'"
+        return f" Completed {len(results)} tests from suite '{suite.name}'"
 
     except Exception as e:
         logger.error(f"Suite execution error: {e}")
-        return f"❌ Error: {str(e)}"
+        return f" Error: {str(e)}"
 
 
 def create_app() -> gr.Blocks:
@@ -276,7 +266,7 @@ def create_app() -> gr.Blocks:
     with gr.Blocks(title="Diogenes Model Test Tool", theme=gr.themes.Soft()) as app:
         gr.Markdown(
             """
-            # 🧪 Diogenes Model Test Tool
+            # Diogenes Model Test Tool
 
             Comprehensive testing interface for evaluating Diogenes model performance
             and epistemic mode detection.
@@ -287,7 +277,7 @@ def create_app() -> gr.Blocks:
             # =====================================================================
             # Model Tab
             # =====================================================================
-            with gr.TabItem("🤖 Model"):
+            with gr.TabItem("Model"):
                 gr.Markdown("### Load and Configure Model")
 
                 with gr.Row():
@@ -344,7 +334,7 @@ def create_app() -> gr.Blocks:
             # =====================================================================
             # Quick Test Tab
             # =====================================================================
-            with gr.TabItem("⚡ Quick Test"):
+            with gr.TabItem("Quick Test"):
                 gr.Markdown("### Single Prompt Testing")
 
                 with gr.Row():
@@ -400,7 +390,7 @@ def create_app() -> gr.Blocks:
             # =====================================================================
             # Comparison Tab
             # =====================================================================
-            with gr.TabItem("🔄 Comparison"):
+            with gr.TabItem("Comparison"):
                 gr.Markdown("### Side-by-Side Model Comparison")
 
                 with gr.Row():
@@ -470,7 +460,7 @@ def create_app() -> gr.Blocks:
             # =====================================================================
             # Batch Test Tab
             # =====================================================================
-            with gr.TabItem("📦 Batch Test"):
+            with gr.TabItem("Batch Test"):
                 gr.Markdown("### Batch Testing with Test Suites")
 
                 with gr.Row():
@@ -523,7 +513,7 @@ def create_app() -> gr.Blocks:
             # =====================================================================
             # History Tab
             # =====================================================================
-            with gr.TabItem("📜 History"):
+            with gr.TabItem("History"):
                 gr.Markdown("### Test History")
 
                 refresh_btn = gr.Button("Refresh History")

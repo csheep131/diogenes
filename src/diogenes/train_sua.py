@@ -54,7 +54,7 @@ try:
     )
     from diogenes.eval_metrics import compute_sua_metrics
 except ImportError:
-    print("⚠️  Warning: Diogenes modules not found. Running in standalone mode.")
+    print("Warning: Diogenes modules not found. Running in standalone mode.")
 
 
 @dataclass
@@ -161,9 +161,9 @@ def load_sua_dataset(dataset_path: str) -> Dict[str, Any]:
         cat = sample.get("category", "unknown")
         categories[cat] = categories.get(cat, 0) + 1
 
-    print(f"✅ Loaded {total} SUA samples:")
+    print(f"Loaded {total} SUA samples:")
     for cat, count in sorted(categories.items()):
-        print(f"   - {cat}: {count} ({count/total*100:.1f}%)")
+        print(f" - {cat}: {count} ({count/total*100:.1f}%)")
 
     return dataset
 
@@ -190,10 +190,10 @@ def prepare_model(
 
     # Determine starting checkpoint
     if dpo_checkpoint and os.path.exists(dpo_checkpoint):
-        print(f"✅ Loading DPO checkpoint: {dpo_checkpoint}")
+        print(f"Loading DPO checkpoint: {dpo_checkpoint}")
         model_path = dpo_checkpoint
     else:
-        print(f"⚠️  No DPO checkpoint found, using base model: {model_name}")
+        print(f"No DPO checkpoint found, using base model: {model_name}")
         model_path = model_name
 
     # QLoRA configuration for 8GB VRAM
@@ -267,12 +267,12 @@ def check_pass1_protection(
         True if Pass@1 is stable, False if regression detected
     """
     if baseline_pass1 is None:
-        print("⚠️  No baseline Pass@1 provided, skipping protection check")
+        print("No baseline Pass@1 provided, skipping protection check")
         return True
 
-    print(f"\n🔍 Running Pass@1 Protection Check...")
-    print(f"   Baseline Pass@1: {baseline_pass1:.4f}")
-    print(f"   Max allowed degradation: {max_degradation*100:.1f}%")
+    print(f"\n Running Pass@1 Protection Check...")
+    print(f" Baseline Pass@1: {baseline_pass1:.4f}")
+    print(f" Max allowed degradation: {max_degradation*100:.1f}%")
 
     try:
         # Run Pass@1 protection test
@@ -284,16 +284,16 @@ def check_pass1_protection(
         )
 
         if result.is_regression:
-            print(f"❌ PASS@1 REGRESSION DETECTED: {result.regression_severity}")
-            print(f"   Details: {result.regression_details}")
-            print(f"   Recommendation: {result.recommendation}")
+            print(f"PASS@1 REGRESSION DETECTED: {result.regression_severity}")
+            print(f" Details: {result.regression_details}")
+            print(f" Recommendation: {result.recommendation}")
             return False
         else:
-            print(f"✓ Pass@1 stable - no regression detected")
+            print(f"Pass@1 stable - no regression detected")
             return True
 
     except Exception as e:
-        print(f"⚠️  Pass@1 protection check failed: {e}")
+        print(f"Pass@1 protection check failed: {e}")
         return True  # Continue training if check fails
 
 
@@ -318,11 +318,11 @@ def main():
     )
 
     print("=" * 60)
-    print("🔥 Phase 3.5: SUA (Staleness/Unknown/Ambiguity) Fine-Tuning")
+    print("Phase 3.5: SUA (Staleness/Unknown/Ambiguity) Fine-Tuning")
     print("=" * 60)
 
     # 1. Load dataset
-    print("\n📊 Loading SUA dataset...")
+    print("\n Loading SUA dataset...")
     sua_dataset = load_sua_dataset(training_args.dataset_path)
 
     # 2. Prepare tokenizer
@@ -330,7 +330,7 @@ def main():
     tokenizer = prepare_tokenizer(training_args.model_name)
 
     # 3. Prepare model
-    print("\n🤖 Loading model...")
+    print("\n Loading model...")
     model = prepare_model(
         training_args.model_name,
         training_args.dpo_checkpoint,
@@ -339,7 +339,7 @@ def main():
     )
 
     # 4. Tokenize dataset
-    print("\n📝 Tokenizing dataset...")
+    print("\n Tokenizing dataset...")
     tokenized_dataset = sua_dataset.map(
         lambda x: tokenize_function(x, tokenizer),
         batched=True,
@@ -347,7 +347,7 @@ def main():
     )
 
     # 5. Configure training arguments
-    print("\n⚙️  Configuring training...")
+    print("\n  Configuring training...")
     hf_training_args = TrainingArguments(
         output_dir=training_args.output_dir,
         num_train_epochs=training_args.num_train_epochs,
@@ -370,7 +370,7 @@ def main():
     )
 
     # 6. Initialize trainer
-    print("\n🏋️  Initializing trainer...")
+    print("\n  Initializing trainer...")
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
         mlm=False,
@@ -386,34 +386,34 @@ def main():
 
     # 7. Start training
     print("\n" + "=" * 60)
-    print("🚀 Starting SUA training...")
+    print("Starting SUA training...")
     print("=" * 60)
-    print(f"   Model: {training_args.model_name}")
-    print(f"   DPO Checkpoint: {training_args.dpo_checkpoint}")
-    print(f"   Dataset: {training_args.dataset_path} ({len(sua_dataset)} samples)")
-    print(f"   Output: {training_args.output_dir}")
-    print(f"   Learning Rate: {training_args.learning_rate}")
-    print(f"   Epochs: {training_args.num_train_epochs}")
-    print(f"   LoRA Rank: {training_args.lora_r}")
-    print(f"   Batch Size: {training_args.per_device_train_batch_size}")
-    print(f"   Gradient Accumulation: {training_args.gradient_accumulation_steps}")
+    print(f" Model: {training_args.model_name}")
+    print(f" DPO Checkpoint: {training_args.dpo_checkpoint}")
+    print(f" Dataset: {training_args.dataset_path} ({len(sua_dataset)} samples)")
+    print(f" Output: {training_args.output_dir}")
+    print(f" Learning Rate: {training_args.learning_rate}")
+    print(f" Epochs: {training_args.num_train_epochs}")
+    print(f" LoRA Rank: {training_args.lora_r}")
+    print(f" Batch Size: {training_args.per_device_train_batch_size}")
+    print(f" Gradient Accumulation: {training_args.gradient_accumulation_steps}")
     print("=" * 60)
 
     # Train
     trainer.train()
 
     # 8. Save final checkpoint
-    print("\n💾 Saving final checkpoint...")
+    print("\n Saving final checkpoint...")
     final_output = os.path.join(training_args.output_dir, "final_checkpoint")
     trainer.save_model(final_output)
     tokenizer.save_pretrained(final_output)
 
-    print(f"✅ SUA training completed!")
-    print(f"   Final checkpoint: {final_output}")
+    print(f"SUA training completed!")
+    print(f" Final checkpoint: {final_output}")
 
     # 9. Pass@1 Protection Check (if baseline provided)
     if training_args.baseline_pass1 is not None:
-        print("\n🛡️  Running Pass@1 Protection Check...")
+        print("\n  Running Pass@1 Protection Check...")
         is_stable = check_pass1_protection(
             final_output,
             training_args.baseline_pass1,
@@ -421,15 +421,15 @@ def main():
         )
 
         if not is_stable:
-            print("\n⚠️  WARNING: Pass@1 regression detected!")
-            print("   Consider:")
-            print("   - Reducing learning rate (e.g., 1e-6)")
-            print("   - Reducing epochs (e.g., 1 epoch)")
-            print("   - Reducing LoRA rank (e.g., 8)")
+            print("\n  WARNING: Pass@1 regression detected!")
+            print(" Consider:")
+            print(" - Reducing learning rate (e.g., 1e-6)")
+            print(" - Reducing epochs (e.g., 1 epoch)")
+            print(" - Reducing LoRA rank (e.g., 8)")
             sys.exit(1)
 
     print("\n" + "=" * 60)
-    print("✅ Phase 3.5 SUA Training successfully completed!")
+    print("Phase 3.5 SUA Training successfully completed!")
     print("=" * 60)
 
     return 0

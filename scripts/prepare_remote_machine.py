@@ -60,7 +60,7 @@ class RemoteMachinePreparer:
     def run_remote(self, command: str, capture: bool = False) -> Optional[str]:
         """Execute a command on the remote machine."""
         full_cmd = self.ssh_cmd + [command]
-        print(f"  → {command}")
+        print(f" {command}")
         try:
             if capture:
                 result = subprocess.run(
@@ -71,7 +71,7 @@ class RemoteMachinePreparer:
                 subprocess.run(full_cmd, check=True)
                 return None
         except subprocess.CalledProcessError as e:
-            print(f"  ✗ Command failed: {e}")
+            print(f" Command failed: {e}")
             raise
 
     def check_connection(self) -> bool:
@@ -79,10 +79,10 @@ class RemoteMachinePreparer:
         print("\n[1/7] Testing SSH connection...")
         try:
             self.run_remote("echo 'Connection successful'")
-            print("  ✓ SSH connection established")
+            print(" SSH connection established")
             return True
         except subprocess.CalledProcessError:
-            print("  ✗ Failed to connect via SSH")
+            print(" Failed to connect via SSH")
             return False
 
     def check_hardware(self) -> dict:
@@ -101,16 +101,16 @@ class RemoteMachinePreparer:
             hardware["gpus"] = len(gpus)
             hardware["gpu_model"] = gpus[0].split(",")[0].strip()
             hardware["vram_gb"] = int(gpus[0].split(",")[1].strip().replace(" MiB", "")) // 1024
-            print(f"  ✓ GPU: {hardware['gpus']}x {hardware['gpu_model']} ({hardware['vram_gb']}GB VRAM)")
+            print(f" GPU: {hardware['gpus']}x {hardware['gpu_model']} ({hardware['vram_gb']}GB VRAM)")
         else:
-            print("  ✗ No NVIDIA GPU detected")
+            print(" No NVIDIA GPU detected")
             hardware["gpus"] = 0
 
         # CPU check
         cpu_output = self.run_remote("nproc --all", capture=True)
         if cpu_output:
             hardware["cpu_cores"] = int(cpu_output)
-            print(f"  ✓ CPU: {hardware['cpu_cores']} cores")
+            print(f" CPU: {hardware['cpu_cores']} cores")
 
         # RAM check
         ram_output = self.run_remote(
@@ -118,7 +118,7 @@ class RemoteMachinePreparer:
         )
         if ram_output:
             hardware["ram_gb"] = int(ram_output)
-            print(f"  ✓ RAM: {hardware['ram_gb']}GB")
+            print(f" RAM: {hardware['ram_gb']}GB")
 
         # Disk check
         disk_output = self.run_remote(
@@ -127,21 +127,21 @@ class RemoteMachinePreparer:
         )
         if disk_output and disk_output.isdigit():
             hardware["disk_free_gb"] = int(disk_output)
-            print(f"  ✓ Disk free: {hardware['disk_free_gb']}GB")
+            print(f" Disk free: {hardware['disk_free_gb']}GB")
         else:
             disk_output = self.run_remote(
                 "df -BG / | awk 'NR==2{{gsub(/G/,\"\",$4); print $4}}'", capture=True
             )
             hardware["disk_free_gb"] = int(disk_output) if disk_output.isdigit() else 0
-            print(f"  ✓ Disk free: {hardware['disk_free_gb']}GB")
+            print(f" Disk free: {hardware['disk_free_gb']}GB")
 
         # Validate requirements
         valid = True
         if hardware.get("vram_gb", 0) < 70:
-            print("  ⚠ Warning: VRAM < 70GB, training may be slow or fail")
+            print(" Warning: VRAM < 70GB, training may be slow or fail")
             valid = False
         if hardware.get("disk_free_gb", 0) < 50:
-            print("  ⚠ Warning: Disk space < 50GB, may not be enough for datasets")
+            print(" Warning: Disk space < 50GB, may not be enough for datasets")
             valid = False
 
         return hardware
@@ -153,7 +153,7 @@ class RemoteMachinePreparer:
         # Check if Docker is installed
         docker_check = self.run_remote("docker --version", capture=True)
         if not docker_check:
-            print("  → Installing Docker...")
+            print(" Installing Docker...")
             self.run_remote(
                 "curl -fsSL https://get.docker.com | sudo sh",
             )
@@ -165,7 +165,7 @@ class RemoteMachinePreparer:
             capture=True,
         )
         if not nvidia_check:
-            print("  → Installing NVIDIA Container Toolkit...")
+            print(" Installing NVIDIA Container Toolkit...")
             self.run_remote(
                 "curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | "
                 "sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit.gpg"
@@ -181,10 +181,10 @@ class RemoteMachinePreparer:
         # Check Python version
         python_check = self.run_remote("python3 --version", capture=True)
         if not python_check or "3.10" not in python_check and "3.11" not in python_check:
-            print("  → Installing Python 3.10+...")
+            print(" Installing Python 3.10+...")
             self.run_remote("sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv")
 
-        print("  ✓ Dependencies installed")
+        print(" Dependencies installed")
         return True
 
     def setup_project_directory(self) -> bool:
@@ -200,7 +200,7 @@ class RemoteMachinePreparer:
         for subdir in subdirs:
             self.run_remote(f"mkdir -p {self.project_dir}/{subdir}")
 
-        print(f"  ✓ Project directory created at {self.project_dir}")
+        print(f" Project directory created at {self.project_dir}")
         return True
 
     def sync_code(self) -> bool:
@@ -222,11 +222,11 @@ class RemoteMachinePreparer:
         for item in items_to_sync:
             local_path = project_root / item
             if local_path.exists():
-                print(f"  → Syncing {item}...")
+                print(f" Syncing {item}...")
                 cmd = scp_cmd + [str(local_path), f"{self.user}@{self.host}:{self.project_dir}/"]
                 subprocess.run(cmd, check=True)
 
-        print("  ✓ Code synced")
+        print(" Code synced")
         return True
 
     def sync_datasets(self, dataset_path: Optional[str] = None) -> bool:
@@ -235,13 +235,13 @@ class RemoteMachinePreparer:
 
         if dataset_path:
             scp_cmd = self._build_scp_cmd()
-            print(f"  → Syncing dataset from {dataset_path}...")
+            print(f" Syncing dataset from {dataset_path}...")
             cmd = scp_cmd + [dataset_path, f"{self.user}@{self.host}:{self.project_dir}/datasets/"]
             subprocess.run(cmd, check=True)
-            print("  ✓ Datasets synced")
+            print(" Datasets synced")
         else:
-            print("  ℹ No dataset path provided, skipping dataset sync")
-            print("  → Datasets will be downloaded during training")
+            print(" No dataset path provided, skipping dataset sync")
+            print(" Datasets will be downloaded during training")
 
         return True
 
@@ -297,7 +297,7 @@ echo "Training completed!"
         # Cleanup
         os.remove(temp_script)
 
-        print(f"  ✓ Training script created at {self.project_dir}/train.sh")
+        print(f" Training script created at {self.project_dir}/train.sh")
         return True
 
     def print_summary(self, hardware: dict) -> None:
@@ -308,17 +308,17 @@ echo "Training completed!"
         print(f"Host: {self.user}@{self.host}")
         print(f"Project Directory: {self.project_dir}")
         print(f"\nHardware:")
-        print(f"  - GPUs: {hardware.get('gpus', 0)}x {hardware.get('gpu_model', 'N/A')}")
-        print(f"  - VRAM: {hardware.get('vram_gb', 0)}GB")
-        print(f"  - CPU Cores: {hardware.get('cpu_cores', 'N/A')}")
-        print(f"  - RAM: {hardware.get('ram_gb', 'N/A')}GB")
-        print(f"  - Free Disk: {hardware.get('disk_free_gb', 'N/A')}GB")
+        print(f"- GPUs: {hardware.get('gpus', 0)}x {hardware.get('gpu_model', 'N/A')}")
+        print(f"- VRAM: {hardware.get('vram_gb', 0)}GB")
+        print(f"- CPU Cores: {hardware.get('cpu_cores', 'N/A')}")
+        print(f"- RAM: {hardware.get('ram_gb', 'N/A')}GB")
+        print(f"- Free Disk: {hardware.get('disk_free_gb', 'N/A')}GB")
         print(f"\nNext steps:")
-        print(f"  1. SSH into remote: ssh {self.user}@{self.host}")
-        print(f"  2. Navigate to project: cd {self.project_dir}")
-        print(f"  3. Run training: ./train.sh")
+        print(f"1. SSH into remote: ssh {self.user}@{self.host}")
+        print(f"2. Navigate to project: cd {self.project_dir}")
+        print(f"3. Run training: ./train.sh")
         print(f"\nOr run training directly via SSH:")
-        print(f"  ssh {self.user}@{self.host} 'cd {self.project_dir} && ./train.sh'")
+        print(f"ssh {self.user}@{self.host} 'cd {self.project_dir} && ./train.sh'")
         print("=" * 60)
 
     def prepare(self, sync_datasets: bool = False, dataset_path: Optional[str] = None) -> bool:
@@ -340,7 +340,7 @@ echo "Training completed!"
 
             return True
         except Exception as e:
-            print(f"\n✗ Preparation failed: {e}")
+            print(f"\n Preparation failed: {e}")
             return False
 
 

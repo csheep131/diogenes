@@ -11,7 +11,7 @@ from pathlib import Path
 
 def print_header(text: str) -> None:
     print("\n" + "=" * 60)
-    print(f" {text}")
+    print(f"{text}")
     print("=" * 60)
 
 
@@ -38,10 +38,10 @@ def check_python_version() -> bool:
     print(f"Python version: {version.major}.{version.minor}.{version.micro}")
 
     if version.major == 3 and version.minor >= 10:
-        print("✓ Python version is compatible (>= 3.10)")
+        print("Python version is compatible (>= 3.10)")
         return True
     else:
-        print("✗ Python version must be 3.10 or higher")
+        print("Python version must be 3.10 or higher")
         return False
 
 
@@ -54,29 +54,29 @@ def check_cuda() -> bool:
     )
 
     if not success:
-        print("✗ PyTorch not installed or CUDA check failed")
+        print("PyTorch not installed or CUDA check failed")
         return False
 
     if output == "True":
-        print("✓ CUDA is available")
+        print("CUDA is available")
 
         # Get GPU info
         success, gpu_name = run_command(
             [sys.executable, "-c", "import torch; print(torch.cuda.get_device_name(0))"]
         )
         if success:
-            print(f"  GPU: {gpu_name}")
+            print(f"GPU: {gpu_name}")
 
         success, cuda_version = run_command(
             [sys.executable, "-c", "import torch; print(torch.version.cuda)"]
         )
         if success:
-            print(f"  CUDA version: {cuda_version}")
+            print(f"CUDA version: {cuda_version}")
 
         return True
     else:
-        print("✗ CUDA not available")
-        print("  Note: CPU-only mode is possible but not recommended for training")
+        print("CUDA not available")
+        print("Note: CPU-only mode is possible but not recommended for training")
         return True  # Still allow CPU mode
 
 
@@ -103,18 +103,18 @@ def check_dependencies() -> bool:
     for pkg in required:
         success, _ = run_command([sys.executable, "-m", "pip", "show", pkg])
         if success:
-            print(f"  ✓ {pkg}")
+            print(f" {pkg}")
         else:
-            print(f"  ✗ {pkg} - MISSING")
+            print(f" {pkg} - MISSING")
             all_ok = False
 
     print("\nOptional packages:")
     for pkg in optional:
         success, _ = run_command([sys.executable, "-m", "pip", "show", pkg])
         if success:
-            print(f"  ✓ {pkg}")
+            print(f" {pkg}")
         else:
-            print(f"  ○ {pkg} - not installed")
+            print(f" {pkg} - not installed")
 
     return all_ok
 
@@ -131,13 +131,13 @@ def check_huggingface_login() -> bool:
 
     for path in hf_token_paths:
         if path.exists():
-            print(f"✓ HuggingFace token found: {path}")
-            print("  You should have access to Qwen3-32B")
+            print(f"HuggingFace token found: {path}")
+            print("You should have access to Qwen3-32B")
             return True
 
-    print("✗ No HuggingFace token found")
+    print("No HuggingFace token found")
     print("\nTo login, run:")
-    print("  huggingface-cli login")
+    print("huggingface-cli login")
     print("\nMake sure you have access to Qwen3-32B on HuggingFace")
     return False
 
@@ -155,13 +155,13 @@ def check_disk_space() -> bool:
     print(f"Free disk space: {free_gb:.1f} GB")
 
     if free_gb >= 70:
-        print("✓ Sufficient space for model (~70GB needed)")
+        print("Sufficient space for model (~70GB needed)")
         return True
     elif free_gb >= 30:
-        print("○ May be sufficient with 4-bit quantization")
+        print("May be sufficient with 4-bit quantization")
         return True
     else:
-        print("✗ Insufficient disk space")
+        print("Insufficient disk space")
         return False
 
 
@@ -183,9 +183,9 @@ def check_directory_structure() -> bool:
     for dir_path in required_dirs:
         path = Path(dir_path)
         if path.exists():
-            print(f"  ✓ {dir_path}/")
+            print(f" {dir_path}/")
         else:
-            print(f"  ✗ {dir_path}/ - MISSING")
+            print(f" {dir_path}/ - MISSING")
             all_ok = False
 
     return all_ok
@@ -202,9 +202,9 @@ def install_dependencies() -> None:
     )
 
     if success:
-        print("✓ Dependencies installed successfully")
+        print("Dependencies installed successfully")
     else:
-        print("✗ Installation failed")
+        print("Installation failed")
         print(output)
 
 
@@ -227,19 +227,19 @@ def main():
     all_passed = all(checks.values())
 
     for name, passed in checks.items():
-        status = "✓" if passed else "✗"
-        print(f"  {status} {name}")
+        status = "OK" if passed else "FAIL"
+        print(f"{status} {name}")
 
     if all_passed:
-        print("\n✓ All checks passed!")
+        print("\n All checks passed!")
         print("\nNext steps:")
-        print("  1. If not logged in: huggingface-cli login")
-        print("  2. Download model: python scripts/download_model.py")
-        print("  3. Test inference: python scripts/test_inference.py")
+        print("1. If not logged in: huggingface-cli login")
+        print("2. Download model: python scripts/download_model.py")
+        print("3. Test inference: python scripts/test_inference.py")
     else:
-        print("\n✗ Some checks failed. Please fix the issues above.")
+        print("\n Some checks failed. Please fix the issues above.")
         print("\nTo install dependencies, run:")
-        print("  pip install -e .")
+        print("pip install -e .")
 
     # Offer to install dependencies
     if not checks["Dependencies"]:
