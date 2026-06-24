@@ -1,7 +1,7 @@
 # Attention Residuals (AttnRes) Quickstart Guide
 
-**Based on:** arXiv:2603.15031  
-**Version:** 1.0.0  
+**Based on:** arXiv:2603.15031
+**Version:** 1.0.0
 **Date:** March 19, 2026
 
 ---
@@ -26,14 +26,14 @@ Add to your `configs/config.yaml`:
 
 ```yaml
 attnres:
-  enabled: true
-  variant: "full"  # or "block" for memory efficiency
-  num_blocks: 8
-  apply_to: "both"
-  init_scale: 0.02
-  dropout: 0.0
-  use_layer_norm: true
-  cache_on_cpu: false
+ enabled: true
+ variant: "full" # or "block" for memory efficiency
+ num_blocks: 8
+ apply_to: "both"
+ init_scale: 0.02
+ dropout: 0.0
+ use_layer_norm: true
+ cache_on_cpu: false
 ```
 
 ### 2. Enable AttnRes in Code
@@ -56,9 +56,9 @@ model.enable_attnres(variant="block", num_blocks=8)
 ```bash
 # Standard SFT training with AttnRes enabled
 python src/diogenes/train_sft.py \
-  --model_name Qwen/Qwen3-0.6B \
-  --config configs/config.yaml \
-  --output_dir models/sft_attnres_test
+ --model_name Qwen/Qwen3-0.6B \
+ --config configs/config.yaml \
+ --output_dir models/sft_attnres_test
 ```
 
 ---
@@ -155,9 +155,9 @@ For Qwen3-32B (hidden_size=2048, num_layers=32):
 
 1. **Use Block variant** for large models
 2. **Enable CPU offloading** if VRAM is constrained:
-   ```python
-   model.enable_attnres(variant="block", cache_on_cpu=True)
-   ```
+ ```python
+ model.enable_attnres(variant="block", cache_on_cpu=True)
+ ```
 3. **Reduce batch size** if OOM errors occur
 4. **Use gradient checkpointing** in training scripts
 
@@ -210,8 +210,8 @@ from diogenes.attnres.utils import analyze_attention_distribution
 
 # Get attention weights from wrapper
 weights = model.model.attn_res.get_attention_weights_for_analysis(
-    model.model.attn_res.cache,
-    layer_idx=10,
+ model.model.attn_res.cache,
+ layer_idx=10,
 )
 
 # Analyze distribution
@@ -227,15 +227,15 @@ print(f"Sparsity: {analysis['sparsity']:.2%}")
 from diogenes.attnres.utils import create_layer_visualization
 
 config = AttnResConfig(
-    variant=AttnResVariant.FULL,
-    hidden_size=2048,
-    num_layers=32,
+ variant=AttnResVariant.FULL,
+ hidden_size=2048,
+ num_layers=32,
 )
 
 visualization = create_layer_visualization(
-    config,
-    model.model.attn_res.cache,
-    model.model.attn_res,
+ config,
+ model.model.attn_res.cache,
+ model.model.attn_res,
 )
 print(visualization)
 ```
@@ -319,15 +319,15 @@ from diogenes.attnres import AttnResConfig, AttnResVariant, AttnResWrapper
 
 # Create custom config
 config = AttnResConfig(
-    variant=AttnResVariant.BLOCK,
-    hidden_size=2048,
-    num_layers=32,
-    num_blocks=8,
-    init_scale=0.01,
-    dropout=0.1,
-    use_layer_norm=True,
-    cache_on_cpu=True,
-    apply_to="both",
+ variant=AttnResVariant.BLOCK,
+ hidden_size=2048,
+ num_layers=32,
+ num_blocks=8,
+ init_scale=0.01,
+ dropout=0.1,
+ use_layer_norm=True,
+ cache_on_cpu=True,
+ apply_to="both",
 )
 
 # Apply to model
@@ -340,9 +340,9 @@ model.model = wrapper.wrap()
 ```python
 # Check gradient norms for AttnRes parameters
 for name, param in model.model.named_parameters():
-    if 'attn_res' in name and param.grad is not None:
-        grad_norm = param.grad.norm().item()
-        print(f"{name}: grad_norm = {grad_norm:.4f}")
+ if 'attn_res' in name and param.grad is not None:
+ grad_norm = param.grad.norm().item()
+ print(f"{name}: grad_norm = {grad_norm:.4f}")
 ```
 
 ### Export Attention Weights
@@ -353,20 +353,20 @@ import json
 # Collect attention weights for all layers
 attention_data = {}
 for layer_idx in range(model.model.config.num_hidden_layers):
-    weights = model.model.attn_res.get_attention_weights_for_analysis(
-        model.model.attn_res.cache,
-        layer_idx,
-    )
-    if weights is not None:
-        attention_data[f"layer_{layer_idx}"] = {
-            "mean": weights.mean().item(),
-            "std": weights.std().item(),
-            "max": weights.max().item(),
-        }
+ weights = model.model.attn_res.get_attention_weights_for_analysis(
+ model.model.attn_res.cache,
+ layer_idx,
+ )
+ if weights is not None:
+ attention_data[f"layer_{layer_idx}"] = {
+ "mean": weights.mean().item(),
+ "std": weights.std().item(),
+ "max": weights.max().item(),
+ }
 
 # Save to file
 with open("attention_weights.json", "w") as f:
-    json.dump(attention_data, f, indent=2)
+ json.dump(attention_data, f, indent=2)
 ```
 
 ---

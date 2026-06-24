@@ -2,7 +2,7 @@
 
 **Dauer:** Tag 1–2
 
-**Status:** ✅ **ABGESCHLOSSEN** (18. März 2026)
+**Status:** **ABGESCHLOSSEN** (18. März 2026)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
@@ -52,9 +52,9 @@ Direct Preference Optimization (DPO) ist eine RLHF-Alternative (Reinforcement Le
 - Das Modell lernt: `P(chosen) > P(rejected)` für denselben Prompt
 - DPO transformiert das Preference-Learning in ein klassisches Klassifikationsproblem
 - Formel: `L_DPO = -log σ(β · [log(P(chosen)/P_rejected) - log(π_ref(chosen)/π_ref(rejected))])`
-  - `σ`: Sigmoid-Funktion
-  - `β`: Temperature-Parameter (typisch 0.1-0.5)
-  - `π_ref`: Referenzmodell (meist das SFT-Modell vor DPO)
+ - `σ`: Sigmoid-Funktion
+ - `β`: Temperature-Parameter (typisch 0.1-0.5)
+ - `π_ref`: Referenzmodell (meist das SFT-Modell vor DPO)
 
 **Vorteile gegenüber PPO/RLHF:**
 - **Stabiler**: Kein separates Reward-Modell nötig
@@ -80,23 +80,23 @@ Direct Preference Optimization (DPO) ist eine RLHF-Alternative (Reinforcement Le
 
 ```
 Pre-trained Model (Qwen 3B für Testing)
-         ↓
-    [SFT Phase] (RTX 3050)
-    - 80k Samples
-    - Lernt epistemische Modi
-    - Reasoning-Traces
-         ↓
-   SFT-Modell
-         ↓
-    [DPO Phase] (RTX 3050)
-    - 60k Präferenzpaare
-    - Halluzinations-Penalty
-    - Ehrlichkeit belohnen
-         ↓
-  Diogenes-Modell (3B Test)
-         ↓
-    [Phase 7: Produktion auf H100]
-    - Qwen3-32B Final Training
+ ↓
+ [SFT Phase] (RTX 3050)
+ - 80k Samples
+ - Lernt epistemische Modi
+ - Reasoning-Traces
+ ↓
+ SFT-Modell
+ ↓
+ [DPO Phase] (RTX 3050)
+ - 60k Präferenzpaare
+ - Halluzinations-Penalty
+ - Ehrlichkeit belohnen
+ ↓
+ Diogenes-Modell (3B Test)
+ ↓
+ [Phase 7: Produktion auf H100]
+ - Qwen3-32B Final Training
 ```
 
 **SFT** bringt dem Modell *was* es tun soll (epistemisch ehrliche Antworten).
@@ -104,19 +104,19 @@ Pre-trained Model (Qwen 3B für Testing)
 
 ## Aufgaben
 
-### 1. Dataset Generator erstellen ✅
+### 1. Dataset Generator erstellen
 
 #### SFT Dataset (~80.000 Samples)
 - [x] 7 epistemische Modi abdecken
 - [x] Fehlerklassen generieren:
-  - Ignorance → ABSTAIN
-  - Staleness → CAUTIOUS_LIMIT
-  - Ambiguity → CLARIFY
-  - False Premise → REJECT_PREMISE
-  - Adversarial → DIRECT_ANSWER
-  - Shallow Trap → PROBABILISTIC
-  - Multi-Hop → PROBABILISTIC
-  - Tool Required → REQUEST_TOOL
+ - Ignorance → ABSTAIN
+ - Staleness → CAUTIOUS_LIMIT
+ - Ambiguity → CLARIFY
+ - False Premise → REJECT_PREMISE
+ - Adversarial → DIRECT_ANSWER
+ - Shallow Trap → PROBABILISTIC
+ - Multi-Hop → PROBABILISTIC
+ - Tool Required → REQUEST_TOOL
 
 #### DPO Dataset (~60.000 Paare)
 - [x] Ranking: Gold > Acceptable > Weak > Hallucination
@@ -126,22 +126,22 @@ Pre-trained Model (Qwen 3B für Testing)
 #### JSON Schema implementieren
 ```json
 {
-  "id": "sample_001",
-  "question": "...",
-  "category": "false_premise",
-  "gold_mode": "REJECT_PREMISE",
-  "risk_level": "high",
-  "needs_tool": false,
-  "time_sensitive": false,
-  "false_premise": true,
-  "confidence_target": 0.1,
-  "chosen_answer": "...",
-  "rejected_answer": "...",
-  "reasoning_trace": "optional"
+ "id": "sample_001",
+ "question": "...",
+ "category": "false_premise",
+ "gold_mode": "REJECT_PREMISE",
+ "risk_level": "high",
+ "needs_tool": false,
+ "time_sensitive": false,
+ "false_premise": true,
+ "confidence_target": 0.1,
+ "chosen_answer": "...",
+ "rejected_answer": "...",
+ "reasoning_trace": "optional"
 }
 ```
 
-### 2. SFT Training Script ✅
+### 2. SFT Training Script
 - [x] LoRA Konfiguration (rank 32, alpha 64)
 - [x] Target Modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
 - [x] QLoRA (4-bit) Quantisierung
@@ -150,7 +150,7 @@ Pre-trained Model (Qwen 3B für Testing)
 - [x] RTX 3050-kompatibel (8GB VRAM)
 - [x] Wandb-Logging deaktivierbar
 
-### 3. DPO Training Script ✅
+### 3. DPO Training Script
 - [x] Preference Pairing implementieren
 - [x] Hallucination Penalty
 - [x] Ehrliche Antworten belohnen
@@ -158,14 +158,14 @@ Pre-trained Model (Qwen 3B für Testing)
 - [x] RTX 3050-kompatibel (8GB VRAM)
 - [x] TRL DPOTrainer Integration
 
-### 4. DPO-Audit Script ✅ (Neu)
+### 4. DPO-Audit Script (Neu)
 - [x] `dpo_audit.py` für Prompt-Interferenz-Prüfung
 - [x] Difficulty Bias Check (< 55% hard für Diogenes)
 - [x] Verbosity Bias Check (< 1.2 Ratio)
 - [x] Abstain Representation Check (> 5%)
 - [x] Audit-Report Generierung
 
-### 5. Pass@1 Protection ✅
+### 5. Pass@1 Protection
 - [x] Zwei-Tier-Evaluationssystem implementiert
 - [x] Core Reliability Metrics (Tier 1)
 - [x] Special Metrics für Math/Code (Tier 2, nur Monitoring)
@@ -232,13 +232,13 @@ python src/diogenes/dataset_generator.py --dpo-pairs 60000
 **Usage:**
 ```bash
 python src/diogenes/train_sft.py \
-  --model_name Qwen/Qwen2.5-3B-Instruct \
-  --dataset_path datasets/sft_dataset.jsonl \
-  --output_dir models/sft_3b_test \
-  --num_train_epochs 3 \
-  --per_device_train_batch_size 1 \
-  --gradient_accumulation_steps 4 \
-  --learning_rate 2e-4
+ --model_name Qwen/Qwen2.5-3B-Instruct \
+ --dataset_path datasets/sft_dataset.jsonl \
+ --output_dir models/sft_3b_test \
+ --num_train_epochs 3 \
+ --per_device_train_batch_size 1 \
+ --gradient_accumulation_steps 4 \
+ --learning_rate 2e-4
 ```
 
 **VRAM-Nutzung:**
@@ -258,15 +258,15 @@ python src/diogenes/train_sft.py \
 **Usage:**
 ```bash
 python src/diogenes/train_dpo.py \
-  --model_name Qwen/Qwen2.5-3B-Instruct \
-  --sft_model_path models/sft_3b_test \
-  --dataset_path datasets/dpo_dataset.jsonl \
-  --output_dir models/dpo_3b_test \
-  --num_train_epochs 2 \
-  --per_device_train_batch_size 1 \
-  --gradient_accumulation_steps 16 \
-  --learning_rate 5e-7 \
-  --beta 0.2
+ --model_name Qwen/Qwen2.5-3B-Instruct \
+ --sft_model_path models/sft_3b_test \
+ --dataset_path datasets/dpo_dataset.jsonl \
+ --output_dir models/dpo_3b_test \
+ --num_train_epochs 2 \
+ --per_device_train_batch_size 1 \
+ --gradient_accumulation_steps 16 \
+ --learning_rate 5e-7 \
+ --beta 0.2
 ```
 
 **VRAM-Nutzung:**
@@ -285,15 +285,15 @@ python src/diogenes/train_dpo.py \
 **Usage:**
 ```bash
 python src/diogenes/dpo_audit.py \
-  --dataset_path datasets/dpo_dataset.jsonl \
-  --output_path dpo_audit_report.json
+ --dataset_path datasets/dpo_dataset.jsonl \
+ --output_path dpo_audit_report.json
 ```
 
 **Audit-Ergebnis (aktuell):**
-- ✅ Difficulty: 54.9% hard (akzeptiert)
-- ✅ Verbosity: 0.78 Ratio (gut)
-- ✅ Abstain: 14.9% (gut)
-- ✅ **AUDIT BESTANDEN**
+- Difficulty: 54.9% hard (akzeptiert)
+- Verbosity: 0.78 Ratio (gut)
+- Abstain: 14.9% (gut)
+- **AUDIT BESTANDEN**
 
 ### `eval_metrics.py`
 
@@ -320,18 +320,18 @@ python src/diogenes/dpo_audit.py \
 
 | Bedingung | Pass@1 Δ | Pass@k Δ | Aktion |
 |-----------|----------|----------|--------|
-| **Kritische Regression** | < -2% | > +1% | ❌ NICHT PROMOTEN |
-| **Warnung** | < -1% | > +0.5% | ⚠️ Vorsichtig prüfen |
-| **Verbesserung** | > +1% | Beliebig | ✓ Sicher |
-| **Stabil** | ±1% | Beliebig | ✓ Sicher |
+| **Kritische Regression** | < -2% | > +1% | NICHT PROMOTEN |
+| **Warnung** | < -1% | > +0.5% | Vorsichtig prüfen |
+| **Verbesserung** | > +1% | Beliebig | Sicher |
+| **Stabil** | ±1% | Beliebig | Sicher |
 
 ## DPO-Audit Grenzwerte
 
 | Metrik | Schwellenwert | Status |
 |--------|---------------|--------|
-| Difficulty Bias | < 55% hard | ✓ Pass (54.9%) |
-| Verbosity Bias | < 1.2 Ratio | ✓ Pass (0.78) |
-| Abstain Repr. | > 5% | ✓ Pass (14.9%) |
+| Difficulty Bias | < 55% hard | Pass (54.9%) |
+| Verbosity Bias | < 1.2 Ratio | Pass (0.78) |
+| Abstain Repr. | > 5% | Pass (14.9%) |
 
 ## Entwicklungs-Workflow
 
@@ -350,7 +350,7 @@ python src/diogenes/dpo_audit.py \
 
 ## Nächste Schritte
 
-➡️ **Phase 2**: SFT Testing auf RTX 3050 mit Qwen2.5-3B-Instruct
+ **Phase 2**: SFT Testing auf RTX 3050 mit Qwen2.5-3B-Instruct
 
 ```bash
 # 1. Dataset vorbereiten (bereits erledigt)
@@ -358,24 +358,24 @@ ls -lh datasets/sft_dataset.jsonl
 
 # 2. SFT Training lokal starten
 python src/diogenes/train_sft.py \
-  --model_name Qwen/Qwen2.5-3B-Instruct \
-  --dataset_path datasets/sft_dataset.jsonl \
-  --output_dir models/sft_3b_test \
-  --num_train_epochs 3
+ --model_name Qwen/Qwen2.5-3B-Instruct \
+ --dataset_path datasets/sft_dataset.jsonl \
+ --output_dir models/sft_3b_test \
+ --num_train_epochs 3
 
 # 3. Training überwachen
 tail -f /tmp/sft_train.log
 watch -n 2 nvidia-smi
 ```
 
-➡️ **Phase 3**: DPO Testing auf RTX 3050
+ **Phase 3**: DPO Testing auf RTX 3050
 
 ```bash
 # Nach SFT-Completion
 ./scripts/run_dpo_training.sh
 ```
 
-➡️ **Phase 7**: Finales Training auf H100 (nach lokaler Validierung)
+ **Phase 7**: Finales Training auf H100 (nach lokaler Validierung)
 
 ## Referenzen
 

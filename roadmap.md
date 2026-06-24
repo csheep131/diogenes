@@ -4,7 +4,7 @@
 
 **Stand:** 9. Mai 2026
 
-**Status:** Phase 0-1 ✅ abgeschlossen · Phase 2 READY TO START · Datasets generiert · Tests erweitert · Smoke Test läuft
+**Status:** Phase 0-1 abgeschlossen · Phase 2 READY TO START · Datasets generiert · Tests erweitert · Smoke Test läuft
 
 ---
 
@@ -92,15 +92,15 @@ Ein Modell gilt als erfolgreich, wenn es:
 
 Das Modell entscheidet für jede Anfrage einen von sieben Modi:
 
-| Modus            | Beschreibung                          |
+| Modus | Beschreibung |
 |------------------|---------------------------------------|
-| DIRECT_ANSWER    | sichere, direkte Antwort              |
-| CAUTIOUS_LIMIT   | Antwort mit klaren Einschränkungen    |
-| ABSTAIN          | ehrliche Wissenslücke                 |
-| CLARIFY          | Rückfrage bei Unklarheit              |
-| REJECT_PREMISE   | falsche Annahme korrigieren           |
-| REQUEST_TOOL     | externe Daten/Tool erforderlich       |
-| PROBABILISTIC    | unsichere, aber plausible Ableitung   |
+| DIRECT_ANSWER | sichere, direkte Antwort |
+| CAUTIOUS_LIMIT | Antwort mit klaren Einschränkungen |
+| ABSTAIN | ehrliche Wissenslücke |
+| CLARIFY | Rückfrage bei Unklarheit |
+| REJECT_PREMISE | falsche Annahme korrigieren |
+| REQUEST_TOOL | externe Daten/Tool erforderlich |
+| PROBABILISTIC | unsichere, aber plausible Ableitung |
 
 ---
 
@@ -110,13 +110,13 @@ Das Modell entscheidet für jede Anfrage einen von sieben Modi:
 
 ```
 User Input
-    ↓
+ ↓
 Epistemic Classifier (Routing Head)
-    ↓
+ ↓
 Mode Selection
-    ↓
+ ↓
 Routing Decision
-    ↓
+ ↓
 Antwortgenerierung / Tool Call / Rückfrage
 ```
 
@@ -135,42 +135,42 @@ Antwortgenerierung / Tool Call / Rückfrage
 
 ### 4.1 Dataset Split
 
-| Typ              | Zweck                          | Größe      |
+| Typ | Zweck | Größe |
 |------------------|--------------------------------|------------|
-| SFT Dataset      | Verhalten & Modi lernen        | ~80.000    |
-| DPO Dataset      | Präferenz & Halluzinations-Reduktion | ~60.000 Paare |
-| Eval Dataset     | unabhängige Bewertung          | 5.000+     |
-| Red Team Dataset | adversarial Tests              | 2.000+     |
+| SFT Dataset | Verhalten & Modi lernen | ~80.000 |
+| DPO Dataset | Präferenz & Halluzinations-Reduktion | ~60.000 Paare |
+| Eval Dataset | unabhängige Bewertung | 5.000+ |
+| Red Team Dataset | adversarial Tests | 2.000+ |
 
 ### 4.2 Fehlerklassen (8 Klassen → 7 Modi)
 
-| Klasse           | Zielmodus          |
+| Klasse | Zielmodus |
 |------------------|--------------------|
-| Ignorance        | ABSTAIN            |
-| Staleness        | CAUTIOUS_LIMIT     |
-| Ambiguity        | CLARIFY            |
-| False Premise    | REJECT_PREMISE     |
-| Adversarial      | DIRECT_ANSWER (stay factual) |
-| Shallow Trap     | PROBABILISTIC      |
-| Multi-Hop        | PROBABILISTIC      |
-| Tool Required    | REQUEST_TOOL       |
+| Ignorance | ABSTAIN |
+| Staleness | CAUTIOUS_LIMIT |
+| Ambiguity | CLARIFY |
+| False Premise | REJECT_PREMISE |
+| Adversarial | DIRECT_ANSWER (stay factual) |
+| Shallow Trap | PROBABILISTIC |
+| Multi-Hop | PROBABILISTIC |
+| Tool Required | REQUEST_TOOL |
 
 ### 4.3 Datenschema (JSON)
 
 ```json
 {
-  "id": "sample_001",
-  "question": "...",
-  "category": "false_premise",
-  "gold_mode": "REJECT_PREMISE",
-  "risk_level": "high",
-  "needs_tool": false,
-  "time_sensitive": false,
-  "false_premise": true,
-  "confidence_target": 0.1,
-  "chosen_answer": "...",
-  "rejected_answer": "...",
-  "reasoning_trace": "optional"
+ "id": "sample_001",
+ "question": "...",
+ "category": "false_premise",
+ "gold_mode": "REJECT_PREMISE",
+ "risk_level": "high",
+ "needs_tool": false,
+ "time_sensitive": false,
+ "false_premise": true,
+ "confidence_target": 0.1,
+ "chosen_answer": "...",
+ "rejected_answer": "...",
+ "reasoning_trace": "optional"
 }
 ```
 
@@ -236,7 +236,7 @@ Erst nach vollständiger lokaler Validierung:
 | 7-C | Qwen3-32B | ~65 GB | ~2h | Calibration |
 | 7-D | Qwen3-32B | ~65 GB | ~4h | Evaluation |
 
-### Phase 1 – SFT ✅ ABGESCHLOSSEN (RTX 3050)
+### Phase 1 – SFT ABGESCHLOSSEN (RTX 3050)
 
 **Status:** Script implementiert, auf RTX 3050 getestet
 
@@ -247,7 +247,7 @@ Erst nach vollständiger lokaler Validierung:
 - Script: `src/diogenes/train_sft.py`
 - **Getestet mit:** Qwen3-0.6B und Qwen2.5-3B-Instruct
 
-### Phase 2 – DPO ✅ IMPLEMENTIERT (RTX 3050)
+### Phase 2 – DPO IMPLEMENTIERT (RTX 3050)
 
 **Status:** Script implementiert, Testing auf RTX 3050
 
@@ -294,15 +294,15 @@ Linearer Classifier auf dem vorletzten Layer.
 
 ```
 Input
-    ↓
+ ↓
 Epistemic Classifier
-    ↓
+ ↓
 Mode Entscheidung
-    ├── TOOL          → Tool Request
-    ├── CLARIFY       → Rückfrage
-    ├── REJECT        → Prämisse erklären
-    ├── ABSTAIN       → ehrliche Ablehnung
-    └── else          → Antwort generieren
+ ├── TOOL → Tool Request
+ ├── CLARIFY → Rückfrage
+ ├── REJECT → Prämisse erklären
+ ├── ABSTAIN → ehrliche Ablehnung
+ └── else → Antwort generieren
 ```
 
 ---
@@ -328,7 +328,7 @@ Mode Entscheidung
 | Pass@k | Math, Code | **Niemals optimieren** |
 | Best-of-k | Tool-assisted | Spezialfälle |
 
-> **⚠️ Pass@1 Protection:** Tier-2-Metriken dürfen NICHT für Checkpoint-Promotion oder globale Reward-Optimierung verwendet werden. Siehe `docs/PASS1_GUARDRAILS.md`.
+> ** Pass@1 Protection:** Tier-2-Metriken dürfen NICHT für Checkpoint-Promotion oder globale Reward-Optimierung verwendet werden. Siehe `docs/PASS1_GUARDRAILS.md`.
 
 ### Traditionelle Benchmarks
 
@@ -347,14 +347,14 @@ Mode Entscheidung
 ### Utility Score Formel
 
 ```
-correct_answer        +1.0
-correct_cautious      +0.8
-correct_clarify       +0.7
-correct_tool_request  +0.7
-correct_abstain       +0.5
-unnecessary_abstain   -0.4
-wrong_answer          -2.0
-confident_wrong       -3.0
+correct_answer +1.0
+correct_cautious +0.8
+correct_clarify +0.7
+correct_tool_request +0.7
+correct_abstain +0.5
+unnecessary_abstain -0.4
+wrong_answer -2.0
+confident_wrong -3.0
 ```
 
 ---
@@ -376,22 +376,22 @@ confident_wrong       -3.0
 
 | Phase | Hardware | Tage | Aufgabe | Status |
 |-------|----------|------|---------|--------|
-| 0 | RTX 3050 | Tag 0 | Repo + Infrastruktur + Pipeline | ✅ **ABGESCHLOSSEN** |
-| 1 | RTX 3050 | Tag 1–2 | Dataset Generator + Scripts | ✅ **ABGESCHLOSSEN** |
-| 2 | RTX 3050 | Tag 3–5 | SFT Testing (3B Modell) | 🟢 **READY TO START** |
-| 3 | RTX 3050 | Tag 6–8 | DPO Testing (3B Modell) | ⏳ **GEPLANT** |
-| **2.5** | **RTX 3050** | **Tag 8–10** | **Shadow Loop (Parallel-Experiment)** | ⏳ **GEPLANT** |
-| **3.5** | **RTX 3050** | **Tag 10–11** | **SUA Specialization (Staleness/Unknown/Ambiguity)** | ⏳ **GEPLANT** |
-| 4 | RTX 3050 | Tag 12 | Calibration Testing | ⏳ **GEPLANT** |
-| 5 | RTX 3050 | Tag 13–14 | Full Evaluation (3B Modell) | ⏳ **GEPLANT** |
-| 6 | RTX 3050 | Tag 15–16 | Red Teaming (3B Modell) | ⏳ **GEPLANT** |
-| 7-A | H100 | Tag 17 | **Final SFT (32B)** | ⏳ **GEPLANT** |
-| 7-B | H100 | Tag 18 | **Final DPO (32B)** | ⏳ **GEPLANT** |
-| **7-B.1** | **H100** | **Tag 18** | **Final SUA Specialization (32B)** | ⏳ **GEPLANT** |
-| 7-C | H100 | Tag 19 | **Final Calibration (32B)** | ⏳ **GEPLANT** |
-| 7-D | H100 | Tag 20 | **Final Evaluation (32B)** | ⏳ **GEPLANT** |
+| 0 | RTX 3050 | Tag 0 | Repo + Infrastruktur + Pipeline | **ABGESCHLOSSEN** |
+| 1 | RTX 3050 | Tag 1–2 | Dataset Generator + Scripts | **ABGESCHLOSSEN** |
+| 2 | RTX 3050 | Tag 3–5 | SFT Testing (3B Modell) | **READY TO START** |
+| 3 | RTX 3050 | Tag 6–8 | DPO Testing (3B Modell) | **GEPLANT** |
+| **2.5** | **RTX 3050** | **Tag 8–10** | **Shadow Loop (Parallel-Experiment)** | **GEPLANT** |
+| **3.5** | **RTX 3050** | **Tag 10–11** | **SUA Specialization (Staleness/Unknown/Ambiguity)** | **GEPLANT** |
+| 4 | RTX 3050 | Tag 12 | Calibration Testing | **GEPLANT** |
+| 5 | RTX 3050 | Tag 13–14 | Full Evaluation (3B Modell) | **GEPLANT** |
+| 6 | RTX 3050 | Tag 15–16 | Red Teaming (3B Modell) | **GEPLANT** |
+| 7-A | H100 | Tag 17 | **Final SFT (32B)** | **GEPLANT** |
+| 7-B | H100 | Tag 18 | **Final DPO (32B)** | **GEPLANT** |
+| **7-B.1** | **H100** | **Tag 18** | **Final SUA Specialization (32B)** | **GEPLANT** |
+| 7-C | H100 | Tag 19 | **Final Calibration (32B)** | **GEPLANT** |
+| 7-D | H100 | Tag 20 | **Final Evaluation (32B)** | **GEPLANT** |
 
-**Hinweis zu Phase 2.5 (Shadow Loop):** 
+**Hinweis zu Phase 2.5 (Shadow Loop):**
 - Der Custom-Loop läuft parallel zum HF-Training (kein Ersatz)
 - Minimales PyTorch-Skript (~200 Zeilen) testet Epistemic Regularization
 - Exit-Kriterium: Shadow-Loop schlägt HF-Loop in ≥2 Metrics → Phase 3 freigeben
@@ -436,15 +436,15 @@ confident_wrong       -3.0
 In der KI-Entwicklung existiert ein klassischer Trade-off:
 
 **Feature Velocity**: Schnelles Iterieren mit Hugging Face `trl` + `peft` + `DPOTrainer`
-- ✅ Hohe Experimentiergeschwindigkeit
-- ✅ Minimaler Code-Overhead
-- ❌ Begrenzte Kontrolle über Gradientenfluss, Loss-Design, Sampling-Logik
+- Hohe Experimentiergeschwindigkeit
+- Minimaler Code-Overhead
+- Begrenzte Kontrolle über Gradientenfluss, Loss-Design, Sampling-Logik
 
 **Architectural Sovereignty**: Vollständige Kontrolle über Alignment-Prozess
-- ✅ Präzise Steuerung von Loss, Gradienten, Sampling
-- ✅ Custom Loss Functions möglich
-- ✅ Online-Auditing im Training-Loop
-- ❌ Langsamere Iteration, höherer Debugging-Aufwand
+- Präzise Steuerung von Loss, Gradienten, Sampling
+- Custom Loss Functions möglich
+- Online-Auditing im Training-Loop
+- Langsamere Iteration, höherer Debugging-Aufwand
 
 ### Strategische Regel
 
@@ -492,7 +492,7 @@ Statt eines starren Phasen-Switches definieren wir **harte, messbare Checkpoints
 
 ---
 
-### Phase 2.5: Shadow Loop (Parallel-Experiment – 1–2 Wochen) ⭐ NEU
+### Phase 2.5: Shadow Loop (Parallel-Experiment – 1–2 Wochen) NEU
 
 **Framework:** Der Custom-Loop läuft **neben** dem HF-Training (kein Ersatz, sondern Schatten).
 
@@ -502,8 +502,8 @@ Statt eines starren Phasen-Switches definieren wir **harte, messbare Checkpoints
 
 ```
 L_total = L_DPO + λ · max(0, H_pred - H_target)
-              └─────────────────────────────┘
-              Sicherheit in der Unsicherheit
+ └─────────────────────────────┘
+ Sicherheit in der Unsicherheit
 ```
 
 **Ziel:** Das Modell lernt, bei „Ich weiß es nicht"-Fragen **minimal Entropie** zu haben (sich sicher zu sein, dass es unsicher ist).
@@ -512,26 +512,26 @@ L_total = L_DPO + λ · max(0, H_pred - H_target)
 
 ---
 
-### Phase 3: Diogenes Alignment Engine (ab hier volle Sovereignty) ⭐ NEU
+### Phase 3: Diogenes Alignment Engine (ab hier volle Sovereignty) NEU
 
 **Paradigmenwechsel:** Vom „Fine-Tuning" zum **Conditioned Alignment**.
 
 **Komponenten:**
 
 1. **In-Loop Auditing**
-   - Modell generiert während Training 8 Samples
-   - Mini-Auditor (Heuristik + kleines Reward-Model) bewertet in <50 ms
-   - Loss wird sofort angepasst
+ - Modell generiert während Training 8 Samples
+ - Mini-Auditor (Heuristik + kleines Reward-Model) bewertet in <50 ms
+ - Loss wird sofort angepasst
 
 2. **Curriculum Acceleration** (neu & mächtig)
-   - Der Loop trackt pro Epistemic Mode (False Premise, Ambiguity, etc.) die Mastery-Score
-   - Blendet bereits beherrschte Modi automatisch aus
-   - **Bis zu 40% Rechenzeit-Einsparung**
+ - Der Loop trackt pro Epistemic Mode (False Premise, Ambiguity, etc.) die Mastery-Score
+ - Blendet bereits beherrschte Modi automatisch aus
+ - **Bis zu 40% Rechenzeit-Einsparung**
 
 3. **Technische Umsetzung**
-   - Ein einziger `train_step`-Loop mit `torch.autograd`
-   - Custom DataLoader (kein HF-Trainer mehr)
-   - Vollständige Kontrolle über Gradienten, Loss, Sampling
+ - Ein einziger `train_step`-Loop mit `torch.autograd`
+ - Custom DataLoader (kein HF-Trainer mehr)
+ - Vollständige Kontrolle über Gradienten, Loss, Sampling
 
 ---
 
@@ -564,10 +564,10 @@ Behandle den Custom-Loop wie einen **Motorentausch während des Rennens**:
 
 ### Vorteil der neuen v2.0-Version
 
-✅ Entscheidungen sind jetzt **datenbasiert** statt gefühlsbasiert  
-✅ Risiko minimiert (Shadow-Loop als Sicherheitsnetz)  
-✅ Bis zu **40% schnellere Iteration** durch Curriculum Acceleration  
-✅ Vollständige **Sovereignty** ab dem Moment, wo sie wirklich zählt
+ Entscheidungen sind jetzt **datenbasiert** statt gefühlsbasiert
+ Risiko minimiert (Shadow-Loop als Sicherheitsnetz)
+ Bis zu **40% schnellere Iteration** durch Curriculum Acceleration
+ Vollständige **Sovereignty** ab dem Moment, wo sie wirklich zählt
 
 ---
 
@@ -581,120 +581,120 @@ Damit wird Qwen3-32B zum verlässlichsten 32B-Wissensassistenten für kritische 
 
 ## 18. NÄCHSTE SCHRITTE
 
-### ✅ Bereits implementiert (Stand 09.05.2026):
+### Bereits implementiert (Stand 09.05.2026):
 
-- `dataset_generator.py` – SFT/DPO/SUA Datengenerierung ✅ **Datasets generiert**
-- `train_sft.py` – SFT Training mit LoRA/QLoRA ✅ **Tests erweitert**
-- `train_dpo.py` – DPO Training mit Hallucination Penalty ✅ **Tests erweitert**
-- `train_sua.py` – SUA Specialization Training ✅
-- `eval_metrics.py` – Core Reliability Metrics + Pass@1 Schutz ✅
-- `pass1_protection.py` – Regression Detection + DPO Audit ✅
-- `docs/PASS1_GUARDRAILS.md` – Produkt-Richtlinien ✅
-- `inference.py` – Inference Engine mit Mode Detection ✅ **Tests erweitert**
-- `model.py` – DiogenesModel mit LoRA + AttnRes ✅ **Tests erweitert**
+- `dataset_generator.py` – SFT/DPO/SUA Datengenerierung **Datasets generiert**
+- `train_sft.py` – SFT Training mit LoRA/QLoRA **Tests erweitert**
+- `train_dpo.py` – DPO Training mit Hallucination Penalty **Tests erweitert**
+- `train_sua.py` – SUA Specialization Training
+- `eval_metrics.py` – Core Reliability Metrics + Pass@1 Schutz
+- `pass1_protection.py` – Regression Detection + DPO Audit
+- `docs/PASS1_GUARDRAILS.md` – Produkt-Richtlinien
+- `inference.py` – Inference Engine mit Mode Detection **Tests erweitert**
+- `model.py` – DiogenesModel mit LoRA + AttnRes **Tests erweitert**
 - **Tests:** 41 neue Tests (test_model, test_inference, test_train_sft, test_train_dpo)
 - **Datasets:** SFT 80k, DPO 60k, SUA 25k generiert und validiert
 - **Smoke Test:** Pipeline-Validierung mit Qwen3-0.6B läuft
 
-### ➡️ Jetzt ausführen (RTX 3050 8GB):
+### Jetzt ausführen (RTX 3050 8GB):
 
 **Phase 2: SFT Testing mit Qwen2.5-3B-Instruct**
 
 1. **Dataset vorbereiten:**
-   ```bash
-   python src/diogenes/dataset_generator.py --split sft --size 80000
-   ```
+ ```bash
+ python src/diogenes/dataset_generator.py --split sft --size 80000
+ ```
 
 2. **SFT Training lokal starten:**
-   ```bash
-   python src/diogenes/train_sft.py \
-     --model_name Qwen/Qwen2.5-3B-Instruct \
-     --config configs/config.yaml \
-     --output_dir models/sft_3b_test
-   ```
+ ```bash
+ python src/diogenes/train_sft.py \
+ --model_name Qwen/Qwen2.5-3B-Instruct \
+ --config configs/config.yaml \
+ --output_dir models/sft_3b_test
+ ```
 
 3. **Ergebnisse validieren:**
-   ```bash
-   python src/diogenes/eval_metrics.py \
-     --model_path models/sft_3b_test \
-     --benchmark truthfulqa
-   ```
+ ```bash
+ python src/diogenes/eval_metrics.py \
+ --model_path models/sft_3b_test \
+ --benchmark truthfulqa
+ ```
 
 **Phase 3: DPO Testing**
 
 1. **DPO-Dataset generieren:**
-   ```bash
-   python src/diogenes/dataset_generator.py --split dpo --size 60000
-   ```
+ ```bash
+ python src/diogenes/dataset_generator.py --split dpo --size 60000
+ ```
 
 2. **DPO-Audit durchführen:**
-   ```python
-   from diogenes import check_dpo_for_prompt_interference
-   dpo_pairs = load_dpo_dataset("datasets/dpo_60k.jsonl")
-   audit = check_dpo_for_prompt_interference(dpo_pairs)
-   ```
+ ```python
+ from diogenes import check_dpo_for_prompt_interference
+ dpo_pairs = load_dpo_dataset("datasets/dpo_60k.jsonl")
+ audit = check_dpo_for_prompt_interference(dpo_pairs)
+ ```
 
 3. **DPO Training lokal:**
-   ```bash
-   python src/diogenes/train_dpo.py \
-     --model_name Qwen/Qwen2.5-3B-Instruct \
-     --sft_checkpoint models/sft_3b_test \
-     --output_dir models/dpo_3b_test
-   ```
+ ```bash
+ python src/diogenes/train_dpo.py \
+ --model_name Qwen/Qwen2.5-3B-Instruct \
+ --sft_checkpoint models/sft_3b_test \
+ --output_dir models/dpo_3b_test
+ ```
 
 **Phase 3.5: SUA Specialization (Staleness/Unknown/Ambiguity)**
 
 1. **SUA-Dataset generieren:**
-   ```bash
-   python src/diogenes/dataset_generator.py --split sua \
-     --staleness 8000 \
-     --unknown 10000 \
-     --ambiguity 7000
-   ```
+ ```bash
+ python src/diogenes/dataset_generator.py --split sua \
+ --staleness 8000 \
+ --unknown 10000 \
+ --ambiguity 7000
+ ```
 
 2. **SUA Training lokal:**
-   ```bash
-   ./scripts/run_sua_training.sh \
-     --dpo_checkpoint models/dpo_3b_test/final_checkpoint
-   ```
+ ```bash
+ ./scripts/run_sua_training.sh \
+ --dpo_checkpoint models/dpo_3b_test/final_checkpoint
+ ```
 
 3. **SUA-Metriken evaluieren:**
-   ```bash
-   python src/diogenes/eval_metrics.py \
-     --model_path models/sua_3b_test \
-     --sua
-   ```
+ ```bash
+ python src/diogenes/eval_metrics.py \
+ --model_path models/sua_3b_test \
+ --sua
+ ```
 
 4. **Pass@1 Protection Check:**
-   ```bash
-   python3 scripts/pass1_protection_check.py \
-     --model-path models/sua_3b_test \
-     --baseline-pass-at-1 0.75
-   ```
+ ```bash
+ python3 scripts/pass1_protection_check.py \
+ --model-path models/sua_3b_test \
+ --baseline-pass-at-1 0.75
+ ```
 
-### ➡️ Nach lokaler Validierung (H100 80GB):
+### Nach lokaler Validierung (H100 80GB):
 
 **Phase 7: Produktionstraining mit Qwen3-32B**
 
 1. **Remote-Maschine vorbereiten:**
-   ```bash
-   python scripts/prepare_remote_machine.py --config configs/remote_config.yaml
-   ```
+ ```bash
+ python scripts/prepare_remote_machine.py --config configs/remote_config.yaml
+ ```
 
 2. **SFT Training starten:**
-   ```bash
-   ssh <user>@<host> 'cd /opt/diogenes && ./train_sft_final.sh'
-   ```
+ ```bash
+ ssh <user>@<host> 'cd /opt/diogenes && ./train_sft_final.sh'
+ ```
 
 3. **DPO Training starten:**
-   ```bash
-   ssh <user>@<host> 'cd /opt/diogenes && ./train_dpo_final.sh'
-   ```
+ ```bash
+ ssh <user>@<host> 'cd /opt/diogenes && ./train_dpo_final.sh'
+ ```
 
 4. **SUA Specialization starten (Phase 7-B.1):**
-   ```bash
-   ssh <user>@<host> 'cd /opt/diogenes && ./train_sua_final.sh'
-   ```
+ ```bash
+ ssh <user>@<host> 'cd /opt/diogenes && ./train_sua_final.sh'
+ ```
 
 ---
 
@@ -709,26 +709,26 @@ Pass@k (k>1) darf ausschließlich für Mathematik/Code zu Monitoring-Zwecken ver
 ### Implementierung
 
 1. **Zwei-Tier-Evaluation**
-   - Tier 1: Core Reliability (Pass@1, ECE, Hallucination Rate)
-   - Tier 2: Special Metrics (Pass@k, nur Math/Code)
+ - Tier 1: Core Reliability (Pass@1, ECE, Hallucination Rate)
+ - Tier 2: Special Metrics (Pass@k, nur Math/Code)
 
 2. **Regression Detection**
-   - Automatische Erkennung: Pass@1 ↓ bei Pass@k ↑
-   - Kritische Schwelle: Pass@1 < –2% bei Pass@k > +1%
+ - Automatische Erkennung: Pass@1 ↓ bei Pass@k ↑
+ - Kritische Schwelle: Pass@1 < –2% bei Pass@k > +1%
 
 3. **DPO Audit**
-   - Prüfung auf Prompt-Interferenz
-   - Difficulty-Bias < 30%
-   - Verbosity-Bias < 1.2 Ratio
+ - Prüfung auf Prompt-Interferenz
+ - Difficulty-Bias < 30%
+ - Verbosity-Bias < 1.2 Ratio
 
 ### Entscheidungsmatrix
 
 | Bedingung | Pass@1 Δ | Pass@k Δ | Aktion |
 |-----------|----------|----------|--------|
-| **Kritische Regression** | < –2% | > +1% | ❌ NICHT PROMOTEN |
-| **Warnung** | < –1% | > +0.5% | ⚠️ Vorsichtig prüfen |
-| **Verbesserung** | > +1% | Beliebig | ✓ Sicher |
-| **Stabil** | ±1% | Beliebig | ✓ Sicher |
+| **Kritische Regression** | < –2% | > +1% | NICHT PROMOTEN |
+| **Warnung** | < –1% | > +0.5% | Vorsichtig prüfen |
+| **Verbesserung** | > +1% | Beliebig | Sicher |
+| **Stabil** | ±1% | Beliebig | Sicher |
 
 Siehe `docs/PASS1_GUARDRAILS.md` für vollständige Richtlinien.
 

@@ -4,7 +4,8 @@
       "Bash(.venv/bin/python *)",
       "Bash(.venv/bin/pip *)",
       "mcp__socraticode__codebase_index",
-      "mcp__socraticode__codebase_status"
+      "mcp__socraticode__codebase_status",
+      "Bash(python3 *)"
     ]
   },
   "$version": 4

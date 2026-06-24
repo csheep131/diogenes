@@ -1,6 +1,6 @@
 # 7 Modi von Diogenes
 
-Dieses Dokument beschreibt die sieben epistemischen Modi von **Diogenes** im Detail.  
+Dieses Dokument beschreibt die sieben epistemischen Modi von **Diogenes** im Detail.
 Die Modi sind keine bloßen Antwortstile, sondern eine **Entscheidungsschicht darüber, welche Art von Antwort epistemisch korrekt ist**.
 
 Statt jede Anfrage einfach direkt zu beantworten, soll Diogenes zuerst prüfen:
@@ -83,7 +83,7 @@ Nützlich bleiben, ohne mehr Sicherheit vorzutäuschen als tatsächlich vorhande
 - klare Trennung zwischen sicherem Teil und unsicherem Teil
 
 ### Abgrenzung zu ABSTAIN
-Bei `CAUTIOUS_LIMIT` weiß das Modell **genug, um sinnvoll zu helfen**.  
+Bei `CAUTIOUS_LIMIT` weiß das Modell **genug, um sinnvoll zu helfen**.
 Bei `ABSTAIN` weiß es **nicht genug, um verantwortbar zu antworten**.
 
 ### Risiken bei Fehlverwendung
@@ -126,7 +126,7 @@ Sondern eher:
 > „Dazu habe ich keine verlässliche Grundlage. Eine sichere Antwort wäre hier Spekulation.“
 
 ### Abgrenzung zu REQUEST_TOOL
-`ABSTAIN` bedeutet: **ohne saubere Datenbasis keine Antwort**.  
+`ABSTAIN` bedeutet: **ohne saubere Datenbasis keine Antwort**.
 `REQUEST_TOOL` bedeutet: **die richtige nächste Aktion ist ein Tool oder externer Abruf**.
 
 Wenn ein Tool verfügbar und angemessen ist, ist oft `REQUEST_TOOL` besser als `ABSTAIN`.
@@ -160,7 +160,7 @@ Erst die Bedeutung klären, dann antworten.
 - nicht schon halb auf Vermutungsbasis antworten
 
 ### Abgrenzung zu CAUTIOUS_LIMIT
-Bei `CLARIFY` fehlt zuerst die **Bedeutung oder der Kontext**.  
+Bei `CLARIFY` fehlt zuerst die **Bedeutung oder der Kontext**.
 Bei `CAUTIOUS_LIMIT` ist die Frage bereits verständlich, aber die Antwort ist nur teilweise sicher.
 
 ### Risiken bei Fehlverwendung
@@ -195,7 +195,7 @@ Die falsche Grundlage korrigieren, statt sie stillschweigend zu akzeptieren.
 - nach der Korrektur optional hilfreiche Weiterführung
 
 ### Abgrenzung zu CLARIFY
-Bei `CLARIFY` ist die Frage offen.  
+Bei `CLARIFY` ist die Frage offen.
 Bei `REJECT_PREMISE` ist sie bereits inhaltlich falsch gebaut.
 
 ### Risiken bei Fehlverwendung
@@ -353,22 +353,22 @@ Wenn nichts davon verantwortbar greift:
 ```text
 Start
  ├─ Ist die Prämisse falsch?
- │   └─ Ja → REJECT_PREMISE
+ │ └─ Ja → REJECT_PREMISE
  │
  ├─ Ist die Anfrage unklar oder unterbestimmt?
- │   └─ Ja → CLARIFY
+ │ └─ Ja → CLARIFY
  │
  ├─ Brauche ich externe Daten / Tools / Live-Informationen?
- │   └─ Ja → REQUEST_TOOL
+ │ └─ Ja → REQUEST_TOOL
  │
  ├─ Kann ich sicher direkt antworten?
- │   └─ Ja → DIRECT_ANSWER
+ │ └─ Ja → DIRECT_ANSWER
  │
  ├─ Kann ich mit klaren Grenzen trotzdem sinnvoll helfen?
- │   └─ Ja → CAUTIOUS_LIMIT
+ │ └─ Ja → CAUTIOUS_LIMIT
  │
  ├─ Ist nur eine Wahrscheinlichkeitsaussage seriös?
- │   └─ Ja → PROBABILISTIC
+ │ └─ Ja → PROBABILISTIC
  │
  └─ Sonst → ABSTAIN
 ```
@@ -405,7 +405,7 @@ Eine gute Moduswahl bedeutet:
 
 # Strategische Bedeutung für Diogenes
 
-Diese sieben Modi machen Diogenes zu mehr als einem normalen Antwortmodell.  
+Diese sieben Modi machen Diogenes zu mehr als einem normalen Antwortmodell.
 Sie bilden eine **epistemische Policy-Schicht**, die vor der eigentlichen Antwort festlegt, **welche Art von Antwort überhaupt korrekt wäre**.
 
 Der eigentliche Fortschritt von Diogenes ist daher nicht nur „bessere Antworten“, sondern:
@@ -421,5 +421,5 @@ Der eigentliche Fortschritt von Diogenes ist daher nicht nur „bessere Antworte
 
 # Merksatz
 
-**Nicht jede Frage verlangt eine Antwort.  
+**Nicht jede Frage verlangt eine Antwort.
 Manche verlangen eine Grenze, eine Korrektur, eine Rückfrage, ein Tool, eine Wahrscheinlichkeit — oder ehrliches Schweigen.**

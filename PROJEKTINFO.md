@@ -28,9 +28,9 @@ Entwicklung eines epistemisch zuverlässigen Sprachmodells auf Basis von **Qwen3
 ## Projektstatus
 - **Aktuelle Phase:** Phase 2 (SFT Testing auf RTX 3050 mit 3B-Modell) — **READY TO START**
 - **Letztes Update:** 9. Mai 2026 — Project Restart nach Pause seit März 2026
-- **Environment:** Python 3.11.8, PyTorch 2.10.0, CUDA 13.0, RTX 3050 8GB erkannt ✅
-- **Tests:** 41 neue Tests hinzugefügt (test_model, test_inference, test_train_sft, test_train_dpo) — alle grün ✅
-- **Datasets:** SFT 80k, DPO 60k, SUA 25k generiert und validiert ✅
+- **Environment:** Python 3.11.8, PyTorch 2.10.0, CUDA 13.0, RTX 3050 8GB erkannt
+- **Tests:** 41 neue Tests hinzugefügt (test_model, test_inference, test_train_sft, test_train_dpo) — alle grün
+- **Datasets:** SFT 80k, DPO 60k, SUA 25k generiert und validiert
 - **Smoke Test:** Pipeline-Validierung mit Qwen3-0.6B (100 Samples, 1 Epoche) läuft
 - **Roadmap:** Vollständige 20-Tage-Planung mit klaren Exit-Kriterien und Decision Gates
 - **Repository:** Strukturiertes Python-Paket mit vollständiger CI/CD und Testing-Infrastruktur

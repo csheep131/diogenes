@@ -1,8 +1,8 @@
 # Diogenes Product Guardrails
 ## Pass@1 Protection Policy
 
-**Version:** 1.0  
-**Effective Date:** 2026-03-18  
+**Version:** 1.0
+**Effective Date:** 2026-03-18
 **Based on:** arXiv:2602.21189 - "Why Pass@k Optimization Can Degrade Pass@1: Prompt Interference in LLM Post-training"
 
 ---
@@ -65,11 +65,11 @@ Before promoting any checkpoint, the following regression test **MUST** be run:
 from diogenes.pass1_protection import run_regression_test
 
 result = run_regression_test(
-    current_pass_at_1=current_p1,
-    current_pass_at_k=current_pk,
-    baseline_pass_at_1=baseline_p1,
-    baseline_pass_at_k=baseline_pk,
-    k=5,
+ current_pass_at_1=current_p1,
+ current_pass_at_k=current_pk,
+ baseline_pass_at_1=baseline_p1,
+ baseline_pass_at_k=baseline_pk,
+ k=5,
 )
 ```
 
@@ -87,16 +87,16 @@ result = run_regression_test(
 The following pattern indicates **prompt interference** from Pass@k optimization:
 
 ```
-Pass@1 ↓ (decreasing)  AND  Pass@k ↑ (increasing)
+Pass@1 ↓ (decreasing) AND Pass@k ↑ (increasing)
 ```
 
 If this pattern is detected:
 1. **Stop** the promotion process
 2. **Revert** to the previous baseline
 3. **Review** DPO training data for:
-   - Over-weighting of difficult prompts
-   - Bias toward multi-sampling friendly examples
-   - Preference for verbose over concise answers
+ - Over-weighting of difficult prompts
+ - Bias toward multi-sampling friendly examples
+ - Preference for verbose over concise answers
 4. **Adjust** training configuration before retrying
 
 ---
@@ -108,16 +108,16 @@ If this pattern is detected:
 **DO NOT construct DPO pairs that prefer:**
 
 1. **"Plausibly verbose" over "correctly concise"**
-   - Avoid rewarding length over accuracy
-   - Monitor chosen/rejected length ratio (should be ~1.0)
+ - Avoid rewarding length over accuracy
+ - Monitor chosen/rejected length ratio (should be ~1.0)
 
 2. **"Confident wrong" over "honest abstain"**
-   - Never rank hallucinated answers above abstention
-   - Ensure abstain mode is adequately represented (>5% of data)
+ - Never rank hallucinated answers above abstention
+ - Ensure abstain mode is adequately represented (>5% of data)
 
 3. **"Multi-sample friendly" over "single-shot correct"**
-   - Avoid examples where multiple attempts would help
-   - Focus on examples solvable in one attempt
+ - Avoid examples where multiple attempts would help
+ - Focus on examples solvable in one attempt
 
 ### Required DPO Audits
 
@@ -129,8 +129,8 @@ from diogenes.pass1_protection import check_dpo_for_prompt_interference
 audit = check_dpo_for_prompt_interference(dpo_pairs)
 
 if audit["concerns"]:
-    for concern in audit["concerns"]:
-        print(f"⚠️  {concern}")
+ for concern in audit["concerns"]:
+ print(f" {concern}")
 ```
 
 ### Audit Thresholds
@@ -289,24 +289,24 @@ The following require **human approval**:
 from diogenes.pass1_protection import run_pass1_protection_test
 
 result = run_pass1_protection_test(
-    predictions=predictions,
-    ground_truth=ground_truth,
-    confidences=confidences,
-    epistemic_modes=epistemic_modes,
-    gold_modes=gold_modes,
-    is_knowable=is_knowable,
-    needs_tool=needs_tool,
-    tool_requests=tool_requests,
-    false_premise_flags=false_premise_flags,
-    predicted_false_premise=predicted_false_premise,
-    baseline_pass_at_1=baseline_p1,
-    baseline_pass_at_k=baseline_pk,
+ predictions=predictions,
+ ground_truth=ground_truth,
+ confidences=confidences,
+ epistemic_modes=epistemic_modes,
+ gold_modes=gold_modes,
+ is_knowable=is_knowable,
+ needs_tool=needs_tool,
+ tool_requests=tool_requests,
+ false_premise_flags=false_premise_flags,
+ predicted_false_premise=predicted_false_premise,
+ baseline_pass_at_1=baseline_p1,
+ baseline_pass_at_k=baseline_pk,
 )
 
 if not result.should_promote:
-    print(f"❌ {result.recommendation}")
+ print(f" {result.recommendation}")
 else:
-    print(f"✓ {result.recommendation}")
+ print(f" {result.recommendation}")
 ```
 
 ---
@@ -316,15 +316,15 @@ else:
 ### Primary Reference
 
 - **arXiv:2602.21189** - "Why Pass@k Optimization Can Degrade Pass@1: Prompt Interference in LLM Post-training"
-  - Key finding: Pass@k optimization can degrade Pass@1 via gradient conflicts
-  - Mechanism: Over-weighting difficult prompts causes "prompt interference"
-  - Recommendation: Separate optimization targets for single vs. multi-sample
+ - Key finding: Pass@k optimization can degrade Pass@1 via gradient conflicts
+ - Mechanism: Over-weighting difficult prompts causes "prompt interference"
+ - Recommendation: Separate optimization targets for single vs. multi-sample
 
 ### Secondary Reference
 
 - **arXiv:2602.22617** - "Semantic Tube Prediction: Beating LLM Data Efficiency with JEPA"
-  - Status: Research track only (not part of core pipeline)
-  - Potential future application: Representation learning for epistemic states
+ - Status: Research track only (not part of core pipeline)
+ - Potential future application: Representation learning for epistemic states
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Dauer:** Tag 0
 
-**Status:** ✅ **ABGESCHLOSSEN** (18. März 2026)
+**Status:** **ABGESCHLOSSEN** (18. März 2026)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
@@ -15,24 +15,24 @@
 
 ## Aufgaben
 
-### 1. Repository Setup ✅
+### 1. Repository Setup
 - [x] Verzeichnisstruktur angelegt
 - [x] `.gitignore` konfiguriert
 - [x] `pyproject.toml` erstellt
 - [x] README.md mit Projektübersicht
 
-### 2. Infrastruktur ✅
+### 2. Infrastruktur
 - [x] GPU-Zugriff verifiziert (NVIDIA RTX 3050 8 GB)
 - [x] CUDA-Treiber geprüft
 - [x] Python-Umgebung erstellt (.venv)
 
-### 3. Framework Installation ✅
+### 3. Framework Installation
 - [x] PyTorch mit CUDA-Support (2.10.0+cu128)
 - [x] Transformers-Bibliothek
 - [x] Weitere Dependencies (PEFT, Accelerate, bitsandbytes, datasets)
 - [x] TRL für DPO-Training
 
-### 4. Base Model Laden (Klein für Testing) ✅
+### 4. Base Model Laden (Klein für Testing)
 - [x] **Qwen3-0.6B** (~1.2 GB) für Smoke Tests
 - [x] **Qwen3-1.7B** (~3.5 GB) für erste fachliche Tests
 - [x] **Qwen2.5-3B-Instruct** (~6 GB) für realistische Tests
@@ -69,32 +69,32 @@
 ### Was gut funktioniert hat
 
 1. **Pipeline-Validierung mit kleinen Modellen**
-   - Qwen3-0.6B war ideal für schnelle Iterationen
-   - QLoRA 4-bit ermöglicht effizientes Training auf Consumer-Hardware
-   - Alle Scripts laufen stabil auf RTX 3050
+ - Qwen3-0.6B war ideal für schnelle Iterationen
+ - QLoRA 4-bit ermöglicht effizientes Training auf Consumer-Hardware
+ - Alle Scripts laufen stabil auf RTX 3050
 
 2. **Skript-Automatisierung**
-   - `download_model.py` und `download_gguf.py` funktionieren zuverlässig
-   - `test_inference.py` validiert alle 7 epistemischen Modi
+ - `download_model.py` und `download_gguf.py` funktionieren zuverlässig
+ - `test_inference.py` validiert alle 7 epistemischen Modi
 
 3. **Konfigurationsmanagement**
-   - YAML-basierte Configs erlauben einfaches Switching zwischen Modellen
-   - Remote-Config für H100-Training vorbereitet (Phase 7)
+ - YAML-basierte Configs erlauben einfaches Switching zwischen Modellen
+ - Remote-Config für H100-Training vorbereitet (Phase 7)
 
 ### Herausforderungen
 
 1. **VRAM-Beschränkungen**
-   - RTX 3050 mit 8 GB limitiert auf Modelle bis ~6GB
-   - Lösung: QLoRA (4-bit) für alle Tests verwendet
-   - Qwen2.5-3B-Instruct ist das größte Testmodell
+ - RTX 3050 mit 8 GB limitiert auf Modelle bis ~6GB
+ - Lösung: QLoRA (4-bit) für alle Tests verwendet
+ - Qwen2.5-3B-Instruct ist das größte Testmodell
 
 2. **CUDA-Version-Kompatibilität**
-   - PyTorch 2.10.0+ benötigt CUDA 12.8+
-   - Lösung: Explizite Version-Pinning in requirements
+ - PyTorch 2.10.0+ benötigt CUDA 12.8+
+ - Lösung: Explizite Version-Pinning in requirements
 
 3. **Wandb Authentication**
-   - Wandb benötigt API-Key für Logging
-   - Lösung: `WANDB_DISABLED=true` für lokales Training
+ - Wandb benötigt API-Key für Logging
+ - Lösung: `WANDB_DISABLED=true` für lokales Training
 
 ### Metriken aus Phase 0
 
@@ -112,22 +112,22 @@
 
 ```
 Phase 0-1: Qwen3-0.6B (~1.5 GB VRAM)
-  └─ Pipeline, Scripts, Dataset-Generator
+ └─ Pipeline, Scripts, Dataset-Generator
 
 Phase 2-6: Qwen2.5-3B-Instruct (~6 GB VRAM)
-  └─ SFT, DPO, Calibration, Evaluation, Red Teaming
+ └─ SFT, DPO, Calibration, Evaluation, Red Teaming
 ```
 
 ### Produktion (H100 80GB) – Phase 7
 
 ```
 Phase 7: Qwen3-32B (~65 GB VRAM mit QLoRA)
-  └─ Finales Training nach lokaler Validierung
+ └─ Finales Training nach lokaler Validierung
 ```
 
 ## Nächste Schritte
 
-➡️ **Phase 1**: Dataset Generator & Training Scripts (✅ ABGESCHLOSSEN)
+ **Phase 1**: Dataset Generator & Training Scripts ( ABGESCHLOSSEN)
 
 - [x] `dataset_generator.py` für SFT (80k Samples) und DPO (60k Paare)
 - [x] `train_sft.py` mit LoRA/QLoRA Support
@@ -135,18 +135,18 @@ Phase 7: Qwen3-32B (~65 GB VRAM mit QLoRA)
 - [x] `dpo_audit.py` für DPO-Audit vor Training
 - [x] Pass@1 Protection implementiert
 
-➡️ **Phase 2**: SFT Testing auf RTX 3050 mit Qwen2.5-3B-Instruct
+ **Phase 2**: SFT Testing auf RTX 3050 mit Qwen2.5-3B-Instruct
 
 ```bash
 # SFT Training lokal starten
 python src/diogenes/train_sft.py \
-  --model_name Qwen/Qwen2.5-3B-Instruct \
-  --dataset_path datasets/sft_dataset.jsonl \
-  --output_dir models/sft_3b_test \
-  --num_train_epochs 3 \
-  --per_device_train_batch_size 1 \
-  --gradient_accumulation_steps 4 \
-  --learning_rate 2e-4
+ --model_name Qwen/Qwen2.5-3B-Instruct \
+ --dataset_path datasets/sft_dataset.jsonl \
+ --output_dir models/sft_3b_test \
+ --num_train_epochs 3 \
+ --per_device_train_batch_size 1 \
+ --gradient_accumulation_steps 4 \
+ --learning_rate 2e-4
 ```
 
 ## Referenzen

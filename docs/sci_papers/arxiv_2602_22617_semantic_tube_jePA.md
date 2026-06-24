@@ -38,7 +38,7 @@ This paper introduces Semantic Tube Prediction using Joint Embedding Predictive 
 
 ## Relevance to Diogenes
 
-### Current Status: 🔬 Research Track
+### Current Status: Research Track
 
 This paper is being monitored for potential future integration but is **not currently implemented** in Diogenes.
 
@@ -71,22 +71,22 @@ This paper is being monitored for potential future integration but is **not curr
 **Option A: Hybrid Architecture**
 ```
 Qwen3-32B (Base)
-    ↓
+ ↓
 JEPA Representation Layer (experimental)
-    ↓
+ ↓
 Epistemic Routing Head
-    ↓
+ ↓
 Response Generation
 ```
 
 **Option B: JEPA for Uncertainty Only**
 ```
 Qwen3-32B (Base)
-    ↓
+ ↓
 Token Generation + JEPA Uncertainty Estimate
-    ↓
+ ↓
 Confidence Calibration
-    ↓
+ ↓
 Epistemic Mode Decision
 ```
 
@@ -124,7 +124,7 @@ Before considering integration:
 | **Uncertainty** | Token entropy + logit gap | Semantic embedding variance |
 | **Training** | SFT + DPO | Representation learning + DPO |
 | **Data Efficiency** | 80k SFT + 60k DPO | Potentially lower |
-| **Implementation** | ✅ Production-ready | 🔬 Experimental |
+| **Implementation** | Production-ready | Experimental |
 | **Risk** | Low (proven approach) | Medium (research track) |
 
 ---
@@ -133,11 +133,11 @@ Before considering integration:
 
 ```bibtex
 @article{semantic_tube2026,
-  title={Semantic Tube Prediction: Beating LLM Data Efficiency with JEPA},
-  author={Author Names},
-  journal={arXiv preprint arXiv:2602.22617},
-  year={2026},
-  url={https://arxiv.org/abs/2602.22617}
+ title={Semantic Tube Prediction: Beating LLM Data Efficiency with JEPA},
+ author={Author Names},
+ journal={arXiv preprint arXiv:2602.22617},
+ year={2026},
+ url={https://arxiv.org/abs/2602.22617}
 }
 ```
 

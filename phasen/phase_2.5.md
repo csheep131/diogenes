@@ -1,8 +1,8 @@
 # Phase 2.5: Shadow Loop – Parallel-Experiment
 
-**Version:** 1.0  
-**Stand:** 19. März 2026  
-**Status:** ⏳ GEPLANT (nach Phase 2)
+**Version:** 1.0
+**Stand:** 19. März 2026
+**Status:** GEPLANT (nach Phase 2)
 
 ---
 
@@ -14,27 +14,27 @@ Phase 2.5 führt einen **Shadow Custom-Loop** ein, der **parallel** zum bestehen
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Phase 2.5: Shadow Loop                    │
+│ Phase 2.5: Shadow Loop │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  HF Training (Hauptspur)        Shadow Loop (Experiment)    │
-│  ┌────────────────────┐         ┌──────────────────────┐   │
-│  │ trl + peft +       │         │ Custom PyTorch Loop  │   │
-│  │ DPOTrainer         │         │ (~200 Zeilen)        │   │
-│  │                    │         │                      │   │
-│  │ • Standard Loss    │         │ • Epistemic Reg.     │   │
-│  │ • Standard Sampling│         │ • Custom Sampling    │   │
-│  │ • HF Callbacks     │         │ • Mini-Auditor       │   │
-│  │                    │         │                      │   │
-│  │ Metrics:           │         │ Metrics:             │   │
-│  │ - val_loss         │         │ - val_loss           │   │
-│  │ - Win-Rate         │◄───────►│ - Win-Rate           │   │
-│  │ - Epistemic-Score  │  Vergl. │ - Epistemic-Score    │   │
-│  │ - Hallucination    │         │ - Hallucination      │   │
-│  └────────────────────┘         └──────────────────────┘   │
-│                                                              │
-│  Exit-Kriterium: Shadow schlägt HF in ≥2 Metrics            │
-│  → Phase 3 freigeben                                        │
+│ │
+│ HF Training (Hauptspur) Shadow Loop (Experiment) │
+│ ┌────────────────────┐ ┌──────────────────────┐ │
+│ │ trl + peft + │ │ Custom PyTorch Loop │ │
+│ │ DPOTrainer │ │ (~200 Zeilen) │ │
+│ │ │ │ │ │
+│ │ • Standard Loss │ │ • Epistemic Reg. │ │
+│ │ • Standard Sampling│ │ • Custom Sampling │ │
+│ │ • HF Callbacks │ │ • Mini-Auditor │ │
+│ │ │ │ │ │
+│ │ Metrics: │ │ Metrics: │ │
+│ │ - val_loss │ │ - val_loss │ │
+│ │ - Win-Rate │◄───────►│ - Win-Rate │ │
+│ │ - Epistemic-Score │ Vergl. │ - Epistemic-Score │ │
+│ │ - Hallucination │ │ - Hallucination │ │
+│ └────────────────────┘ └──────────────────────┘ │
+│ │
+│ Exit-Kriterium: Shadow schlägt HF in ≥2 Metrics │
+│ → Phase 3 freigeben │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -48,8 +48,8 @@ Phase 2.5 führt einen **Shadow Custom-Loop** ein, der **parallel** zum bestehen
 
 ```
 L_total = L_DPO + λ · max(0, H_pred - H_target)
-              └─────────────────────────────┘
-              Sicherheit in der Unsicherheit
+ └─────────────────────────────┘
+ Sicherheit in der Unsicherheit
 ```
 
 **Komponenten:**
@@ -70,22 +70,22 @@ Das Modell lernt, bei „Ich weiß es nicht"-Fragen **minimal Entropie** zu habe
 
 ```python
 def epistemic_regularization(logits, epistemic_mask, H_target=0.2):
-    """
-    logits: [batch_size, vocab_size]
-    epistemic_mask: [batch_size] - True für epistemische Fragen
-    H_target: Ziel-Entropie für Unsicherheit
-    """
-    # Entropie berechnen
-    probs = F.softmax(logits, dim=-1)
-    H = -torch.sum(probs * torch.log(probs + 1e-8), dim=-1)  # [batch_size]
-    
-    # Nur für epistemische Fragen
-    H_epistemic = H[epistemic_mask]
-    
-    # Penalty wenn H_pred > H_target
-    penalty = torch.clamp(H_epistemic - H_target, min=0)
-    
-    return penalty.mean()
+ """
+ logits: [batch_size, vocab_size]
+ epistemic_mask: [batch_size] - True für epistemische Fragen
+ H_target: Ziel-Entropie für Unsicherheit
+ """
+ # Entropie berechnen
+ probs = F.softmax(logits, dim=-1)
+ H = -torch.sum(probs * torch.log(probs + 1e-8), dim=-1) # [batch_size]
+
+ # Nur für epistemische Fragen
+ H_epistemic = H[epistemic_mask]
+
+ # Penalty wenn H_pred > H_target
+ penalty = torch.clamp(H_epistemic - H_target, min=0)
+
+ return penalty.mean()
 ```
 
 ---
@@ -97,40 +97,40 @@ def epistemic_regularization(logits, epistemic_mask, H_target=0.2):
 ```
 shadow_loop/
 ├── __init__.py
-├── config.py          # Hyperparameter (λ, H_target, etc.)
-├── dataloader.py      # Custom DataLoader mit epistemic classification
-├── model.py           # Model wrapper (LoRA + epistemic head)
-├── loss.py            # L_DPO + epistemic regularization
-├── train_step.py      # Single train_step mit torch.autograd
-├── auditor.py         # Mini-Auditor (Heuristik + Reward)
-└── main.py            # Haupt-Training-Loop
+├── config.py # Hyperparameter (λ, H_target, etc.)
+├── dataloader.py # Custom DataLoader mit epistemic classification
+├── model.py # Model wrapper (LoRA + epistemic head)
+├── loss.py # L_DPO + epistemic regularization
+├── train_step.py # Single train_step mit torch.autograd
+├── auditor.py # Mini-Auditor (Heuristik + Reward)
+└── main.py # Haupt-Training-Loop
 ```
 
 **Haupt-Loop (main.py):**
 
 ```python
 for batch in dataloader:
-    # 1. Epistemic Classification (Awareness)
-    epistemic_categories = classifier(batch)
-    
-    # 2. Forward Pass
-    logits = model(batch['input_ids'])
-    
-    # 3. Loss Calculation (Assessment)
-    loss_dpo = compute_dpo_loss(logits, batch['preferences'])
-    loss_epi = epistemic_regularization(logits, epistemic_categories)
-    loss_total = loss_dpo + lambda_epi * loss_epi
-    
-    # 4. Backward Pass (Adjustment)
-    loss_total.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-    
-    # 5. In-Loop Auditing (optional)
-    if step % audit_interval == 0:
-        samples = generate_samples(model, batch)
-        audit_score = mini_auditor(samples, batch)
-        log_metrics(audit_score)
+ # 1. Epistemic Classification (Awareness)
+ epistemic_categories = classifier(batch)
+
+ # 2. Forward Pass
+ logits = model(batch['input_ids'])
+
+ # 3. Loss Calculation (Assessment)
+ loss_dpo = compute_dpo_loss(logits, batch['preferences'])
+ loss_epi = epistemic_regularization(logits, epistemic_categories)
+ loss_total = loss_dpo + lambda_epi * loss_epi
+
+ # 4. Backward Pass (Adjustment)
+ loss_total.backward()
+ optimizer.step()
+ optimizer.zero_grad()
+
+ # 5. In-Loop Auditing (optional)
+ if step % audit_interval == 0:
+ samples = generate_samples(model, batch)
+ audit_score = mini_auditor(samples, batch)
+ log_metrics(audit_score)
 ```
 
 ---
@@ -218,10 +218,10 @@ Phase 2.5 implementiert das **Triple-A Prinzip** in seiner einfachsten Form:
 
 ### Phase 2.5 gilt als erfolgreich, wenn:
 
-✅ Shadow Loop schlägt HF Loop in **≥2 primären Metriken** über 3 consecutive runs  
-✅ Keine Regression in Pass@1 (< 1%)  
-✅ Training stabil (kein Gradient Explosion/Vanishing)  
-✅ Epistemic Regularization Term konvergiert (H_pred → H_target)
+ Shadow Loop schlägt HF Loop in **≥2 primären Metriken** über 3 consecutive runs
+ Keine Regression in Pass@1 (< 1%)
+ Training stabil (kein Gradient Explosion/Vanishing)
+ Epistemic Regularization Term konvergiert (H_pred → H_target)
 
 ### Bei Erfolg:
 
@@ -229,8 +229,8 @@ Phase 2.5 implementiert das **Triple-A Prinzip** in seiner einfachsten Form:
 
 ### Bei Misserfolg:
 
-→ Shadow Loop als Diagnostic-Tool behalten  
-→ HF Training fortsetzen  
+→ Shadow Loop als Diagnostic-Tool behalten
+→ HF Training fortsetzen
 → Decision Gates erneut evaluieren
 
 ---
@@ -271,15 +271,15 @@ src/diogenes/shadow_loop/
 
 ```python
 wandb.log({
-    "loss/total": loss_total.item(),
-    "loss/dpo": loss_dpo.item(),
-    "loss/epistemic": loss_epi.item(),
-    "metrics/epistemic_score": epistemic_score,
-    "metrics/hallucination_rate": hallucination_rate,
-    "metrics/ece": ece,
-    "regularization/H_pred": H_pred.mean().item(),
-    "regularization/H_target": H_target,
-    "regularization/lambda": lambda_epi,
+ "loss/total": loss_total.item(),
+ "loss/dpo": loss_dpo.item(),
+ "loss/epistemic": loss_epi.item(),
+ "metrics/epistemic_score": epistemic_score,
+ "metrics/hallucination_rate": hallucination_rate,
+ "metrics/ece": ece,
+ "regularization/H_pred": H_pred.mean().item(),
+ "regularization/H_target": H_target,
+ "regularization/lambda": lambda_epi,
 })
 ```
 
@@ -288,18 +288,18 @@ wandb.log({
 ## Nächste Schritte
 
 1. **Nach Phase 2 (SFT Testing):**
-   - Shadow Loop implementieren
-   - Parallel-Experiment starten
-   - Exit-Kriterien evaluieren
+ - Shadow Loop implementieren
+ - Parallel-Experiment starten
+ - Exit-Kriterien evaluieren
 
 2. **Bei erfolgreichem Exit:**
-   - Phase 3 freigeben
-   - Custom-Loop zum Haupt-Training machen
+ - Phase 3 freigeben
+ - Custom-Loop zum Haupt-Training machen
 
 3. **Bei nicht erfolgreichem Exit:**
-   - Shadow Loop als Diagnostic-Tool behalten
-   - HF Training fortsetzen
-   - Decision Gates anpassen
+ - Shadow Loop als Diagnostic-Tool behalten
+ - HF Training fortsetzen
+ - Decision Gates anpassen
 
 ---
 

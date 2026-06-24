@@ -38,8 +38,8 @@ conda activate diogenes
 
 # Oder mit venv
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate  # Windows
+source .venv/bin/activate # Linux/Mac
+# .venv\Scripts\activate # Windows
 ```
 
 ### 2. PyTorch mit CUDA installieren
@@ -162,21 +162,21 @@ print(f"CLARIFY: {result.epistemic_mode.value}")
 
 ```yaml
 model:
-  name: "Qwen/Qwen3-0.6B"  # Für Phase 0
-  # name: "Qwen/Qwen3-1.7B"  # Für bessere Qualität
-  # name: "Qwen/Qwen2.5-3B-Instruct"  # Für beste RTX 3050 Qualität
-  use_4bit: false  # Bei kleinen Modellen nicht nötig
+ name: "Qwen/Qwen3-0.6B" # Für Phase 0
+ # name: "Qwen/Qwen3-1.7B" # Für bessere Qualität
+ # name: "Qwen/Qwen2.5-3B-Instruct" # Für beste RTX 3050 Qualität
+ use_4bit: false # Bei kleinen Modellen nicht nötig
 ```
 
 ---
 
 ## Nächste Schritte
 
-1. ✅ **Setup validieren**: `python scripts/setup_env.py`
-2. ✅ **Modell laden**: `python scripts/download_model.py`
-3. ✅ **Inferenz testen**: `python scripts/test_inference.py`
-4. ✅ **Epistemic Modes testen**: Siehe Code oben
-5. ➡️ **Phase 1**: Dataset-Generator erstellen
+1. **Setup validieren**: `python scripts/setup_env.py`
+2. **Modell laden**: `python scripts/download_model.py`
+3. **Inferenz testen**: `python scripts/test_inference.py`
+4. **Epistemic Modes testen**: Siehe Code oben
+5. **Phase 1**: Dataset-Generator erstellen
 
 ---
 

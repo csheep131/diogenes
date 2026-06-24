@@ -29,7 +29,7 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 - `docs/PASS1_GUARDRAILS.md` – Product guardrails
 - DPO audit for prompt interference patterns
 
-**Status:** ✅ Implemented
+**Status:** Implemented
 
 ---
 
@@ -54,7 +54,7 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 - Future consideration for Phase 7+ iterations
 - Monitoring for updates on representation learning approaches
 
-**Status:** 🔬 Research Track
+**Status:** Research Track
 
 ---
 
@@ -81,7 +81,7 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 - Hallucination penalty in DPO loss
 - Preference ranking: Gold > Acceptable > Weak > Hallucination
 
-**Status:** ✅ Implemented
+**Status:** Implemented
 
 ---
 
@@ -106,7 +106,7 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 - RTX 3050 development workflow (Phase 0-6)
 - H100 production training (Phase 7)
 
-**Status:** ✅ Implemented
+**Status:** Implemented
 
 ---
 
@@ -131,7 +131,7 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 - Target: +8–15% improvement over baseline
 - Included in Core Reliability Metrics
 
-**Status:** ✅ Implemented
+**Status:** Implemented
 
 ---
 
@@ -156,7 +156,7 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 - Target: –20–30% hallucination reduction
 - Included in Core Reliability Metrics
 
-**Status:** ✅ Implemented
+**Status:** Implemented
 
 ---
 
@@ -181,7 +181,7 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 - Phase 4: Calibration & Confidence Mapping
 - Target: –40% ECE reduction
 
-**Status:** ✅ Implemented
+**Status:** Implemented
 
 ---
 
@@ -189,20 +189,20 @@ This directory contains summaries and notes on scientific papers from arXiv.org 
 
 | arXiv ID | Title | Status | Implementation |
 |----------|-------|--------|----------------|
-| **2602.21189** | Pass@k Optimization & Pass@1 Degradation | ✅ | Pass@1 Protection |
-| **2602.22617** | Semantic Tube Prediction / JEPA | 🔬 | Research Track |
-| **2305.18290** | Direct Preference Optimization (DPO) | ✅ | DPO Training |
-| **2305.14314** | QLoRA: Efficient Fine-Tuning | ✅ | QLoRA Support |
-| **2109.07958** | TruthfulQA Benchmark | ✅ | Evaluation Suite |
-| **2305.11747** | HaluEval Benchmark | ✅ | Evaluation Suite |
-| **2306.10481** | Confidence Calibration in LLMs | ✅ | Phase 4 Calibration |
+| **2602.21189** | Pass@k Optimization & Pass@1 Degradation | | Pass@1 Protection |
+| **2602.22617** | Semantic Tube Prediction / JEPA | | Research Track |
+| **2305.18290** | Direct Preference Optimization (DPO) | | DPO Training |
+| **2305.14314** | QLoRA: Efficient Fine-Tuning | | QLoRA Support |
+| **2109.07958** | TruthfulQA Benchmark | | Evaluation Suite |
+| **2305.11747** | HaluEval Benchmark | | Evaluation Suite |
+| **2306.10481** | Confidence Calibration in LLMs | | Phase 4 Calibration |
 
 ---
 
 ## Notes
 
 - Papers are listed in order of importance to the Diogenes project
-- Status: ✅ = Implemented, 🔬 = Research Track, ⏳ = Planned
+- Status: = Implemented, = Research Track, = Planned
 - For detailed implementation notes, see inline documentation in source files
 - Additional papers may be added as the project evolves
 
@@ -214,10 +214,10 @@ When referencing these papers in Diogenes documentation:
 
 ```bibtex
 @article{author2026title,
-  title={Paper Title},
-  author={Author Names},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2026}
+ title={Paper Title},
+ author={Author Names},
+ journal={arXiv preprint arXiv:XXXX.XXXXX},
+ year={2026}
 }
 ```
 

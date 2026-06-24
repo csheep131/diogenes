@@ -1,6 +1,6 @@
 # Phase 3 – DPO Training (Vorbereitet)
 
-**Status:** 📋 **BEREIT ZUM STARTEN** (wartet auf SFT-Completion)
+**Status:** **BEREIT ZUM STARTEN** (wartet auf SFT-Completion)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
@@ -10,22 +10,22 @@
 
 ## Vorbereitung
 
-### ✅ Bereits erledigt:
+### Bereits erledigt:
 
 1. **DPO-Dataset generiert** (60.000 Paare)
-   - Pfad: `datasets/dpo_dataset.jsonl`
-   - Ranking: Gold > Acceptable > Weak > Hallucination
+ - Pfad: `datasets/dpo_dataset.jsonl`
+ - Ranking: Gold > Acceptable > Weak > Hallucination
 
 2. **DPO-Audit bestanden**
-   - Difficulty: 54.9% hard (akzeptiert für Diogenes)
-   - Verbosity Ratio: 0.78 (✓ unter 1.2)
-   - Abstain Representation: 14.9% (✓ über 5%)
+ - Difficulty: 54.9% hard (akzeptiert für Diogenes)
+ - Verbosity Ratio: 0.78 ( unter 1.2)
+ - Abstain Representation: 14.9% ( über 5%)
 
 3. **TRL installiert**
-   - `pip install trl` für DPOTrainer
+ - `pip install trl` für DPOTrainer
 
 4. **Training-Script vorbereitet**
-   - `scripts/run_dpo_training.sh`
+ - `scripts/run_dpo_training.sh`
 
 ---
 
@@ -54,10 +54,10 @@ ps aux | grep train_sft | grep -v grep
 
 # Oder mit expliziten Pfaden
 ./scripts/run_dpo_training.sh \
-    models/sft_3b_test/final_checkpoint \
-    models/dpo_3b_test \
-    datasets/dpo_dataset.jsonl \
-    2
+ models/sft_3b_test/final_checkpoint \
+ models/dpo_3b_test \
+ datasets/dpo_dataset.jsonl \
+ 2
 ```
 
 ### Manueller Start (Alternative):
@@ -68,19 +68,19 @@ source .venv/bin/activate
 export WANDB_DISABLED=true
 
 python3 src/diogenes/train_dpo.py \
-    --model-name Qwen/Qwen2.5-3B-Instruct \
-    --sft-model-path models/sft_3b_test/final_checkpoint \
-    --dataset-path datasets/dpo_dataset.jsonl \
-    --output-dir models/dpo_3b_test \
-    --num-train-epochs 2 \
-    --per-device-train-batch-size 1 \
-    --gradient-accumulation-steps 16 \
-    --learning-rate 5e-7 \
-    --beta 0.2 \
-    --lora-rank 32 \
-    --lora-alpha 64 \
-    --logging-steps 50 \
-    --save-steps 1000
+ --model-name Qwen/Qwen2.5-3B-Instruct \
+ --sft-model-path models/sft_3b_test/final_checkpoint \
+ --dataset-path datasets/dpo_dataset.jsonl \
+ --output-dir models/dpo_3b_test \
+ --num-train-epochs 2 \
+ --per-device-train-batch-size 1 \
+ --gradient-accumulation-steps 16 \
+ --learning-rate 5e-7 \
+ --beta 0.2 \
+ --lora-rank 32 \
+ --lora-alpha 64 \
+ --logging-steps 50 \
+ --save-steps 1000
 ```
 
 ---
@@ -115,24 +115,24 @@ python3 src/diogenes/train_dpo.py \
 
 ```json
 {
-  "total_pairs": 60000,
-  "difficulty_distribution": {
-    "easy": 9019,
-    "medium": 18068,
-    "hard": 32913
-  },
-  "avg_chosen_length": 16.2,
-  "avg_rejected_length": 20.7,
-  "verbosity_ratio": 0.78,
-  "abstain_representation": 14.9%,
-  "passed": true
+ "total_pairs": 60000,
+ "difficulty_distribution": {
+ "easy": 9019,
+ "medium": 18068,
+ "hard": 32913
+ },
+ "avg_chosen_length": 16.2,
+ "avg_rejected_length": 20.7,
+ "verbosity_ratio": 0.78,
+ "abstain_representation": 14.9%,
+ "passed": true
 }
 ```
 
 **Bewertung:**
-- ✅ Verbosity Bias: 0.78 (unter 1.2)
-- ✅ Abstain Representation: 14.9% (über 5%)
-- ⚠️ Difficulty: 54.9% hard (akzeptiert für Diogenes)
+- Verbosity Bias: 0.78 (unter 1.2)
+- Abstain Representation: 14.9% (über 5%)
+- Difficulty: 54.9% hard (akzeptiert für Diogenes)
 
 ---
 
@@ -164,23 +164,23 @@ ls -lh models/dpo_3b_test/
 
 ```bash
 python3 src/diogenes/eval_metrics.py \
-    --model_path models/dpo_3b_test \
-    --eval_dataset datasets/eval_holdout.jsonl
+ --model_path models/dpo_3b_test \
+ --eval_dataset datasets/eval_holdout.jsonl
 ```
 
 ### 2. Pass@1 Protection:
 
 ```bash
 python3 src/diogenes/pass1_protection.py \
-    --model_path models/dpo_3b_test \
-    --baseline_pass_at_1 0.75
+ --model_path models/dpo_3b_test \
+ --baseline_pass_at_1 0.75
 ```
 
 ### 3. Qualitative Tests:
 
 ```bash
 python3 scripts/test_epistemic_modes.py \
-    --model_path models/dpo_3b_test
+ --model_path models/dpo_3b_test
 ```
 
 ---
@@ -232,7 +232,7 @@ python3 scripts/test_epistemic_modes.py \
 
 ```bash
 # Beta-Parameter anpassen
---beta 0.1  # Stärkere Präferenz
+--beta 0.1 # Stärkere Präferenz
 
 # Oder Learning Rate anpassen
 --learning-rate 1e-6

@@ -2,7 +2,7 @@
 
 **Dauer:** Tag 3–5
 
-**Status:** 🔄 **LÄUFT** (seit 18. März 2026, 20:58)
+**Status:** **LÄUFT** (seit 18. März 2026, 20:58)
 
 **Hardware:** NVIDIA RTX 3050 (8GB VRAM)
 
@@ -44,11 +44,11 @@ ps aux | grep train_sft | grep -v grep
 
 ```
 Qwen2.5-3B-Instruct (~6 GB VRAM)
-    ↓
+ ↓
 SFT Training (3 Epochen, ~30h)
-    ↓
+ ↓
 Checkpoint-Validierung
-    ↓
+ ↓
 Pass@1 Regression Test
 ```
 
@@ -56,15 +56,15 @@ Pass@1 Regression Test
 
 ```
 Qwen3-32B (~65 GB VRAM mit QLoRA)
-    ↓
+ ↓
 SFT Training (3 Epochen, ~4h)
-    ↓
+ ↓
 Final Production Checkpoint
 ```
 
 ## Aufgaben
 
-### 1. Training vorbereiten ✅
+### 1. Training vorbereiten
 
 - [x] SFT Dataset laden (~80.000 Samples)
 - [x] Data Preprocessing & Tokenization
@@ -72,7 +72,7 @@ Final Production Checkpoint
 - [x] QLoRA 4-bit Quantisierung aktivieren
 - [x] VRAM-Nutzung überwachen (< 8 GB)
 
-### 2. Training konfigurieren ✅
+### 2. Training konfigurieren
 
 - [x] Target Modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
 - [x] Learning Rate: 2e-4
@@ -81,7 +81,7 @@ Final Production Checkpoint
 - [x] 3 Epochen eingestellt
 - [x] Checkpoint-Intervalle: Alle 5000 Steps
 
-### 3. Training durchführen 🔄
+### 3. Training durchführen
 
 - [x] Start SFT Training auf RTX 3050 (`~30 Stunden`)
 - [ ] Loss-Kurven monitoren
@@ -123,7 +123,7 @@ Final Production Checkpoint
 
 ## Training auf RTX 3050 (8GB)
 
-### Vorbereitung ✅
+### Vorbereitung
 
 ```bash
 # 1. Dataset generieren (bereits erledigt)
@@ -134,7 +134,7 @@ ls -lh datasets/sft_dataset.jsonl
 # Qwen2.5-3B-Instruct ist im HuggingFace Cache
 ```
 
-### Training gestartet ✅
+### Training gestartet
 
 ```bash
 # SFT Training auf RTX 3050 (läuft im Hintergrund)
@@ -143,16 +143,16 @@ source .venv/bin/activate
 export WANDB_DISABLED=true
 
 nohup python3 src/diogenes/train_sft.py \
-  --model_name Qwen/Qwen2.5-3B-Instruct \
-  --dataset_path datasets/sft_dataset.jsonl \
-  --output_dir models/sft_3b_test \
-  --num_train_epochs 3 \
-  --per_device_train_batch_size 1 \
-  --gradient_accumulation_steps 4 \
-  --learning_rate 2e-4 \
-  --logging_steps 100 \
-  --save_steps 5000 \
-  > /tmp/sft_train.log 2>&1 &
+ --model_name Qwen/Qwen2.5-3B-Instruct \
+ --dataset_path datasets/sft_dataset.jsonl \
+ --output_dir models/sft_3b_test \
+ --num_train_epochs 3 \
+ --per_device_train_batch_size 1 \
+ --gradient_accumulation_steps 4 \
+ --learning_rate 2e-4 \
+ --logging_steps 100 \
+ --save_steps 5000 \
+ > /tmp/sft_train.log 2>&1 &
 ```
 
 ### Konfiguration (angepasst für RTX 3050)
@@ -160,40 +160,40 @@ nohup python3 src/diogenes/train_sft.py \
 ```yaml
 # RTX 3050 (8GB) Optimierung
 model:
-  name: "Qwen/Qwen2.5-3B-Instruct"
-  use_4bit: true  # QLoRA für VRAM-Optimierung
-  bnb_4bit_compute_dtype: "float16"
-  bnb_4bit_quant_type: "nf4"
+ name: "Qwen/Qwen2.5-3B-Instruct"
+ use_4bit: true # QLoRA für VRAM-Optimierung
+ bnb_4bit_compute_dtype: "float16"
+ bnb_4bit_quant_type: "nf4"
 
 training:
-  # Batch Size für 8GB VRAM
-  per_device_train_batch_size: 1
-  gradient_accumulation_steps: 4
-  effective_batch_size: 4
+ # Batch Size für 8GB VRAM
+ per_device_train_batch_size: 1
+ gradient_accumulation_steps: 4
+ effective_batch_size: 4
 
-  # LoRA Konfiguration
-  lora_r: 32
-  lora_alpha: 64
-  lora_dropout: 0.05
-  target_modules:
-    - "q_proj"
-    - "k_proj"
-    - "v_proj"
-    - "o_proj"
-    - "gate_proj"
-    - "up_proj"
-    - "down_proj"
+ # LoRA Konfiguration
+ lora_r: 32
+ lora_alpha: 64
+ lora_dropout: 0.05
+ target_modules:
+ - "q_proj"
+ - "k_proj"
+ - "v_proj"
+ - "o_proj"
+ - "gate_proj"
+ - "up_proj"
+ - "down_proj"
 
-  # Learning Rate
-  learning_rate: 2.0e-4
-  num_train_epochs: 3
-  lr_scheduler_type: "cosine"
-  warmup_ratio: 0.03
+ # Learning Rate
+ learning_rate: 2.0e-4
+ num_train_epochs: 3
+ lr_scheduler_type: "cosine"
+ warmup_ratio: 0.03
 
-  # Memory Optimization
-  fp16: true
-  optim: "paged_adamw_8bit"
-  gradient_checkpointing: true
+ # Memory Optimization
+ fp16: true
+ optim: "paged_adamw_8bit"
+ gradient_checkpointing: true
 ```
 
 ## VRAM-Management
@@ -238,33 +238,33 @@ tracker = Pass1RegressionTracker(checkpoint_dir="./models/sft_3b_test")
 
 # Nach jedem Epoch evaluieren
 for epoch in range(3):
-    # Evaluate checkpoint
-    core_metrics = compute_core_reliability_metrics(
-        model_path=f"./models/sft_3b_test/checkpoint_epoch_{epoch}",
-        eval_dataset="datasets/eval_holdout.jsonl",
-    )
+ # Evaluate checkpoint
+ core_metrics = compute_core_reliability_metrics(
+ model_path=f"./models/sft_3b_test/checkpoint_epoch_{epoch}",
+ eval_dataset="datasets/eval_holdout.jsonl",
+ )
 
-    # Pass@k für Monitoring (Math/Code nur)
-    pass_at_k = evaluate_pass_at_k(
-        model_path=f"./models/sft_3b_test/checkpoint_epoch_{epoch}",
-        math_dataset="datasets/math_eval.jsonl",
-        k_values=[1, 3, 5, 10],
-    )
+ # Pass@k für Monitoring (Math/Code nur)
+ pass_at_k = evaluate_pass_at_k(
+ model_path=f"./models/sft_3b_test/checkpoint_epoch_{epoch}",
+ math_dataset="datasets/math_eval.jsonl",
+ k_values=[1, 3, 5, 10],
+ )
 
-    # Regression prüfen
-    result = tracker.record_checkpoint(
-        checkpoint_name=f"epoch_{epoch}",
-        core_metrics=core_metrics,
-        pass_at_k_math=pass_at_k,
-    )
+ # Regression prüfen
+ result = tracker.record_checkpoint(
+ checkpoint_name=f"epoch_{epoch}",
+ core_metrics=core_metrics,
+ pass_at_k_math=pass_at_k,
+ )
 
-    print(f"Epoch {epoch}:")
-    print(f"  Pass@1: {core_metrics.pass_at_1:.4f}")
-    print(f"  ECE: {core_metrics.expected_calibration_error:.4f}")
-    print(f"  Should promote: {result.should_promote}")
+ print(f"Epoch {epoch}:")
+ print(f" Pass@1: {core_metrics.pass_at_1:.4f}")
+ print(f" ECE: {core_metrics.expected_calibration_error:.4f}")
+ print(f" Should promote: {result.should_promote}")
 
-    if not result.should_promote:
-        print(f"  ⚠️  Regression detected: {result.regression_details}")
+ if not result.should_promote:
+ print(f" Regression detected: {result.regression_details}")
 ```
 
 **Achtung:** Pass@k (Math/Code) nur für Monitoring verwenden!
@@ -283,8 +283,8 @@ for epoch in range(3):
 
 # Lösung 3: Kleineres Modell
 python src/diogenes/train_sft.py \
-  --model_name Qwen/Qwen3-1.7B \
-  ...
+ --model_name Qwen/Qwen3-1.7B \
+ ...
 ```
 
 ### Langsames Training
@@ -305,22 +305,22 @@ python src/diogenes/train_sft.py \
 ```bash
 # Von Checkpoint fortsetzen
 python src/diogenes/train_sft.py \
-  --resume_from_checkpoint models/sft_3b_test/checkpoint-1000 \
-  ...
+ --resume_from_checkpoint models/sft_3b_test/checkpoint-1000 \
+ ...
 ```
 
 ## Nächste Schritte
 
-➡️ **Phase 3**: DPO Testing auf RTX 3050 (vorbereitet)
+ **Phase 3**: DPO Testing auf RTX 3050 (vorbereitet)
 
 1. Warten bis SFT-Training abgeschlossen ist (~30h)
 2. DPO-Audit durchführen (bereits bestanden)
 3. DPO-Training starten mit:
-   ```bash
-   ./scripts/run_dpo_training.sh
-   ```
+ ```bash
+ ./scripts/run_dpo_training.sh
+ ```
 
-➡️ **Phase 7-A**: Finales SFT Training auf H100 (nach lokaler Validierung)
+ **Phase 7-A**: Finales SFT Training auf H100 (nach lokaler Validierung)
 
 ## Referenzen
 

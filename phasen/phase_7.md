@@ -2,7 +2,7 @@
 
 **Dauer:** Tag 14–17
 
-**Status:** ⏳ **GEPLANT** (nach erfolgreicher Phase 0-6)
+**Status:** **GEPLANT** (nach erfolgreicher Phase 0-6)
 
 **Hardware:** NVIDIA H100 (80GB VRAM)
 
@@ -16,18 +16,18 @@ Phase 7 ist das **finale Produktionstraining** auf der H100-Infrastruktur. Alle 
 
 ```
 Phase 0-6: RTX 3050 (8GB)
-  └─ Qwen3-0.6B bis Qwen2.5-3B-Instruct
-  └─ Pipeline, Scripts, Hyperparameter
-  └─ Vollständige Validierung
-     ├── Phase 0-1: ✅ ABGESCHLOSSEN
-     ├── Phase 2: 🔄 LÄUFT (SFT Training)
-     ├── Phase 3: 📋 BEREIT (DPO vorbereitet)
-     └── Phase 4-6: ⏳ GEPLANT
+ └─ Qwen3-0.6B bis Qwen2.5-3B-Instruct
+ └─ Pipeline, Scripts, Hyperparameter
+ └─ Vollständige Validierung
+ ├── Phase 0-1: ABGESCHLOSSEN
+ ├── Phase 2: LÄUFT (SFT Training)
+ ├── Phase 3: BEREIT (DPO vorbereitet)
+ └── Phase 4-6: GEPLANT
 
 Phase 7: H100 (80GB)
-  └─ Qwen3-32B
-  └─ Finales Training
-  └─ Production Release
+ └─ Qwen3-32B
+ └─ Finales Training
+ └─ Production Release
 ```
 
 ## Ziele
@@ -111,7 +111,7 @@ Phase 7: H100 (80GB)
 ```bash
 # 1. Remote-Maschine vorbereiten (einmalig)
 python scripts/prepare_remote_machine.py \
-  --config configs/remote_config.yaml
+ --config configs/remote_config.yaml
 
 # 2. Auf Remote-Maschine verbinden
 ssh <user>@<host>
@@ -125,20 +125,20 @@ cd /opt/diogenes
 
 # SFT Training auf Qwen3-32B
 python src/diogenes/train_sft.py \
-  --model_name Qwen/Qwen3-32B \
-  --dataset_path datasets/sft_80k.jsonl \
-  --config configs/config_h100.yaml \
-  --output_dir models/sft_32b_final \
-  --num_train_epochs 3 \
-  --per_device_train_batch_size 4 \
-  --gradient_accumulation_steps 4 \
-  --learning_rate 2e-4 \
-  --lora_r 32 \
-  --lora_alpha 64 \
-  --load_in_4bit true \
-  --logging_steps 10 \
-  --save_strategy epoch \
-  --save_total_limit 3
+ --model_name Qwen/Qwen3-32B \
+ --dataset_path datasets/sft_80k.jsonl \
+ --config configs/config_h100.yaml \
+ --output_dir models/sft_32b_final \
+ --num_train_epochs 3 \
+ --per_device_train_batch_size 4 \
+ --gradient_accumulation_steps 4 \
+ --learning_rate 2e-4 \
+ --lora_r 32 \
+ --lora_alpha 64 \
+ --load_in_4bit true \
+ --logging_steps 10 \
+ --save_strategy epoch \
+ --save_total_limit 3
 ```
 
 ### Konfiguration (configs/config_h100.yaml)
@@ -147,40 +147,40 @@ python src/diogenes/train_sft.py \
 # H100 (80GB) Produktion
 
 model:
-  name: "Qwen/Qwen3-32B"
-  use_4bit: true  # QLoRA für 65GB VRAM-Nutzung
-  bnb_4bit_compute_dtype: "float16"
-  bnb_4bit_quant_type: "nf4"
+ name: "Qwen/Qwen3-32B"
+ use_4bit: true # QLoRA für 65GB VRAM-Nutzung
+ bnb_4bit_compute_dtype: "float16"
+ bnb_4bit_quant_type: "nf4"
 
 training:
-  # Größere Batch Sizes auf H100 möglich
-  per_device_train_batch_size: 4
-  gradient_accumulation_steps: 4
-  effective_batch_size: 16
+ # Größere Batch Sizes auf H100 möglich
+ per_device_train_batch_size: 4
+ gradient_accumulation_steps: 4
+ effective_batch_size: 16
 
-  # LoRA Konfiguration
-  lora_r: 32
-  lora_alpha: 64
-  lora_dropout: 0.05
-  target_modules:
-    - "q_proj"
-    - "k_proj"
-    - "v_proj"
-    - "o_proj"
-    - "gate_proj"
-    - "up_proj"
-    - "down_proj"
+ # LoRA Konfiguration
+ lora_r: 32
+ lora_alpha: 64
+ lora_dropout: 0.05
+ target_modules:
+ - "q_proj"
+ - "k_proj"
+ - "v_proj"
+ - "o_proj"
+ - "gate_proj"
+ - "up_proj"
+ - "down_proj"
 
-  # Learning Rate
-  learning_rate: 2.0e-4
-  num_train_epochs: 3
-  lr_scheduler_type: "cosine"
-  warmup_ratio: 0.03
+ # Learning Rate
+ learning_rate: 2.0e-4
+ num_train_epochs: 3
+ lr_scheduler_type: "cosine"
+ warmup_ratio: 0.03
 
-  # H100 Optimization
-  fp16: true
-  optim: "paged_adamw_8bit"
-  gradient_checkpointing: false  # Nicht nötig bei 80GB
+ # H100 Optimization
+ fp16: true
+ optim: "paged_adamw_8bit"
+ gradient_checkpointing: false # Nicht nötig bei 80GB
 ```
 
 ### Erwartete VRAM-Nutzung (H100)
@@ -208,20 +208,20 @@ cd /opt/diogenes
 
 # DPO Training auf Qwen3-32B
 python src/diogenes/train_dpo.py \
-  --model_name Qwen/Qwen3-32B \
-  --sft_model_path models/sft_32b_final \
-  --dataset_path datasets/dpo_60k.jsonl \
-  --config configs/config_h100.yaml \
-  --output_dir models/dpo_32b_final \
-  --num_train_epochs 2 \
-  --per_device_train_batch_size 2 \
-  --gradient_accumulation_steps 4 \
-  --learning_rate 5e-7 \
-  --beta 0.2 \
-  --load_in_4bit true \
-  --logging_steps 10 \
-  --save_strategy epoch \
-  --save_total_limit 3
+ --model_name Qwen/Qwen3-32B \
+ --sft_model_path models/sft_32b_final \
+ --dataset_path datasets/dpo_60k.jsonl \
+ --config configs/config_h100.yaml \
+ --output_dir models/dpo_32b_final \
+ --num_train_epochs 2 \
+ --per_device_train_batch_size 2 \
+ --gradient_accumulation_steps 4 \
+ --learning_rate 5e-7 \
+ --beta 0.2 \
+ --load_in_4bit true \
+ --logging_steps 10 \
+ --save_strategy epoch \
+ --save_total_limit 3
 ```
 
 ### Erwartete VRAM-Nutzung (H100)
@@ -261,9 +261,9 @@ logits = []
 labels = []
 
 for sample in calibration_data:
-    output = model.generate(sample['input'])
-    logits.append(output.logits)
-    labels.append(sample['label'])
+ output = model.generate(sample['input'])
+ logits.append(output.logits)
+ labels.append(sample['label'])
 
 logits = torch.stack(logits)
 labels = torch.tensor(labels)
@@ -286,17 +286,17 @@ model.save_pretrained("models/diogenes_32b_final")
 ```bash
 # Auf Remote-Maschine
 python src/diogenes/eval_metrics.py \
-  --model_path models/diogenes_32b_final \
-  --benchmarks truthfulqa haluEval wildbench gpqa livebench \
-  --output_dir results/final_evaluation_32b \
-  --batch_size 16
+ --model_path models/diogenes_32b_final \
+ --benchmarks truthfulqa haluEval wildbench gpqa livebench \
+ --output_dir results/final_evaluation_32b \
+ --batch_size 16
 
 # Pass@1 Protection Test
 python src/diogenes/pass1_protection.py \
-  --model_path models/diogenes_32b_final \
-  --baseline_pass_at_1 0.75 \
-  --baseline_pass_at_k 0.90 \
-  --output results/pass1_final_32b.json
+ --model_path models/diogenes_32b_final \
+ --baseline_pass_at_1 0.75 \
+ --baseline_pass_at_k 0.90 \
+ --output results/pass1_final_32b.json
 ```
 
 ### Evaluationsbericht
@@ -322,8 +322,8 @@ python src/diogenes/pass1_protection.py \
 
 ☐ **READY FOR RELEASE** – Alle Ziele erreicht
 ☐ **HOLD** – Folgende Issues müssen behoben werden:
-  - [Issue 1]
-  - [Issue 2]
+ - [Issue 1]
+ - [Issue 2]
 ```
 
 ---
@@ -337,19 +337,19 @@ python src/diogenes/pass1_protection.py \
 model_name: Diogenes-32B
 base_model: Qwen/Qwen3-32B
 description: |
-  Epistemically optimized language model for critical domains.
-  Trained to recognize knowledge boundaries and minimize hallucinations.
+ Epistemically optimized language model for critical domains.
+ Trained to recognize knowledge boundaries and minimize hallucinations.
 
 training:
-  sft_samples: 80000
-  dpo_pairs: 60000
-  epochs: 3
-  hardware: NVIDIA H100 (80GB)
+ sft_samples: 80000
+ dpo_pairs: 60000
+ epochs: 3
+ hardware: NVIDIA H100 (80GB)
 
 metrics:
-  truthfulqa: +X%
-  haluEval: -Y%
-  ece: -Z%
+ truthfulqa: +X%
+ haluEval: -Y%
+ ece: -Z%
 
 license: Apache-2.0
 ```
@@ -380,17 +380,17 @@ print(f"Response: {result.text}")
 
 | Phase | Hardware | Modell | Status | Deliverables |
 |-------|----------|--------|--------|--------------|
-| **Phase 0** | RTX 3050 | 0.6B-3B | ✅ | Infrastruktur, Dependencies |
-| **Phase 1** | RTX 3050 | 0.6B-3B | ✅ | Scripts, Datasets, Audit |
-| **Phase 2** | RTX 3050 | 3B | 🔄 | SFT Testing (LÄUFT) |
-| **Phase 3** | RTX 3050 | 3B | 📋 | DPO Testing (BEREIT) |
-| **Phase 4** | RTX 3050 | 3B | ⏳ | Calibration |
-| **Phase 5** | RTX 3050 | 3B | ⏳ | Evaluation |
-| **Phase 6** | RTX 3050 | 3B | ⏳ | Red Teaming |
-| **7-A** | H100 | 32B | ⏳ | Final SFT |
-| **7-B** | H100 | 32B | ⏳ | Final DPO |
-| **7-C** | H100 | 32B | ⏳ | Final Calibration |
-| **7-D** | H100 | 32B | ⏳ | Final Evaluation |
+| **Phase 0** | RTX 3050 | 0.6B-3B | | Infrastruktur, Dependencies |
+| **Phase 1** | RTX 3050 | 0.6B-3B | | Scripts, Datasets, Audit |
+| **Phase 2** | RTX 3050 | 3B | | SFT Testing (LÄUFT) |
+| **Phase 3** | RTX 3050 | 3B | | DPO Testing (BEREIT) |
+| **Phase 4** | RTX 3050 | 3B | | Calibration |
+| **Phase 5** | RTX 3050 | 3B | | Evaluation |
+| **Phase 6** | RTX 3050 | 3B | | Red Teaming |
+| **7-A** | H100 | 32B | | Final SFT |
+| **7-B** | H100 | 32B | | Final DPO |
+| **7-C** | H100 | 32B | | Final Calibration |
+| **7-D** | H100 | 32B | | Final Evaluation |
 
 ---
 

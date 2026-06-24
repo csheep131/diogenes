@@ -55,17 +55,17 @@ This paper identifies a critical issue in LLM post-training: optimizing for Pass
 ### Evaluation Framework
 
 1. **Two-Tier System:**
-   - Tier 1: Core Reliability Metrics (Pass@1, ECE, Hallucination Rate)
-   - Tier 2: Special Metrics (Pass@k for Math/Code only)
+ - Tier 1: Core Reliability Metrics (Pass@1, ECE, Hallucination Rate)
+ - Tier 2: Special Metrics (Pass@k for Math/Code only)
 
 2. **Regression Detection:**
-   - Monitor Pass@1 Δ and Pass@k Δ across checkpoints
-   - Critical threshold: Pass@1 < –2% with Pass@k > +1%
+ - Monitor Pass@1 Δ and Pass@k Δ across checkpoints
+ - Critical threshold: Pass@1 < –2% with Pass@k > +1%
 
 3. **DPO Audit:**
-   - Check difficulty distribution
-   - Check verbosity bias
-   - Check abstention representation
+ - Check difficulty distribution
+ - Check verbosity bias
+ - Check abstention representation
 
 ---
 
@@ -91,8 +91,8 @@ from diogenes import run_pass1_protection_test
 result = run_pass1_protection_test(...)
 
 if result.is_regression:
-    print(f"⚠️  REGRESSION: {result.regression_severity}")
-    print(f"Recommendation: {result.recommendation}")
+ print(f" REGRESSION: {result.regression_severity}")
+ print(f"Recommendation: {result.recommendation}")
 ```
 
 ### 3. DPO Audit (`src/diogenes/pass1_protection.py`)
@@ -103,17 +103,17 @@ from diogenes import check_dpo_for_prompt_interference
 audit = check_dpo_for_prompt_interference(dpo_pairs)
 
 if audit["difficulty_bias"] or audit["verbosity_bias"]:
-    print("❌ Critical bias detected - review data before training")
+ print(" Critical bias detected - review data before training")
 ```
 
 ### 4. Decision Matrix
 
 | Condition | Pass@1 Δ | Pass@k Δ | Action |
 |-----------|----------|----------|--------|
-| **Critical Regression** | < –2% | > +1% | ❌ DO NOT PROMOTE |
-| **Warning** | < –1% | > +0.5% | ⚠️ Vorsichtig prüfen |
-| **Improvement** | > +1% | Beliebig | ✓ Sicher |
-| **Stable** | ±1% | Beliebig | ✓ Sicher |
+| **Critical Regression** | < –2% | > +1% | DO NOT PROMOTE |
+| **Warning** | < –1% | > +0.5% | Vorsichtig prüfen |
+| **Improvement** | > +1% | Beliebig | Sicher |
+| **Stable** | ±1% | Beliebig | Sicher |
 
 ---
 
@@ -127,17 +127,17 @@ Pass@k (k>1) may ONLY be used for monitoring in verifiable domains (Math, Code).
 
 ### Prohibited Uses of Pass@k
 
-- ❌ Global reward optimization
-- ❌ Checkpoint promotion decisions
-- ❌ DPO loss weighting
-- ❌ Early stopping criteria
+- Global reward optimization
+- Checkpoint promotion decisions
+- DPO loss weighting
+- Early stopping criteria
 
 ### Required Monitoring
 
-- ✅ Pass@1 tracking across all checkpoints
-- ✅ Difficulty distribution in DPO data (<30% hard)
-- ✅ Verbosity bias monitoring (<1.2 ratio)
-- ✅ Regression testing before promotion
+- Pass@1 tracking across all checkpoints
+- Difficulty distribution in DPO data (<30% hard)
+- Verbosity bias monitoring (<1.2 ratio)
+- Regression testing before promotion
 
 ---
 
@@ -145,11 +145,11 @@ Pass@k (k>1) may ONLY be used for monitoring in verifiable domains (Math, Code).
 
 ```bibtex
 @article{pass1_interference2026,
-  title={Why Pass@k Optimization Can Degrade Pass@1: Prompt Interference in LLM Post-training},
-  author={Author Names},
-  journal={arXiv preprint arXiv:2602.21189},
-  year={2026},
-  url={https://arxiv.org/abs/2602.21189}
+ title={Why Pass@k Optimization Can Degrade Pass@1: Prompt Interference in LLM Post-training},
+ author={Author Names},
+ journal={arXiv preprint arXiv:2602.21189},
+ year={2026},
+ url={https://arxiv.org/abs/2602.21189}
 }
 ```
 
