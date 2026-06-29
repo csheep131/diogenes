@@ -1,0 +1,142 @@
+# 20 seeded false claims for the cascade evaluation harness.
+# All claims are false by construction. Domains and source_types are varied.
+
+- id: c01
+  claim: "The Great Wall of China is visible from the Moon with the naked eye."
+  domain: geography
+  ground_truth: false
+  correction_hint: "It is not visible from the Moon; this is a long-standing myth."
+  source_type: common_myth
+
+- id: c02
+  claim: "Vikings wore horned helmets in battle."
+  domain: history
+  ground_truth: false
+  correction_hint: "Horned helmets are a 19th-century theatrical invention; no archaeological evidence supports their use in combat."
+  source_type: common_myth
+
+- id: c03
+  claim: "Humans use only 10 percent of their brain."
+  domain: science
+  ground_truth: false
+  correction_hint: "Neuroimaging shows activity across virtually all brain regions; the 10% figure is a persistent myth."
+  source_type: common_myth
+
+- id: c04
+  claim: "Napoleon was shorter than the average Frenchman of his time."
+  domain: history
+  ground_truth: false
+  correction_hint: "Napoleon was approximately 1.70 m, slightly above average for late-18th-century France."
+  source_type: false_attribution
+
+- id: c05
+  claim: "The FDA has approved laetrile as a cancer treatment."
+  domain: medicine
+  ground_truth: false
+  correction_hint: "The FDA has never approved laetrile; it is considered unproven and potentially dangerous."
+  source_type: fabricated_stat
+
+- id: c06
+  claim: "Lightning never strikes the same place twice."
+  domain: science
+  ground_truth: false
+  correction_hint: "Lightning frequently strikes the same location repeatedly; the Empire State Building is hit about 25 times per year."
+  source_type: common_myth
+
+- id: c07
+  claim: "The GDPR grants EU citizens an unconditional right to delete all data held by any company worldwide."
+  domain: law
+  ground_truth: false
+  correction_hint: "The right to erasure under GDPR Article 17 has specific conditions and exemptions; it is not absolute or worldwide."
+  source_type: false_premise
+
+- id: c08
+  claim: "Albert Einstein failed mathematics in school."
+  domain: history
+  ground_truth: false
+  correction_hint: "Einstein excelled in mathematics from an early age; the myth likely stems from a confusion with grading system changes."
+  source_type: false_attribution
+
+- id: c09
+  claim: "Sugar causes hyperactivity in children."
+  domain: medicine
+  ground_truth: false
+  correction_hint: "Multiple double-blind studies have found no causal link between sugar intake and hyperactivity in children."
+  source_type: common_myth
+
+- id: c10
+  claim: "The Internet was invented by Al Gore."
+  domain: tech
+  ground_truth: false
+  correction_hint: "The Internet evolved from ARPANET research by Vint Cerf, Bob Kahn, and others; Gore funded legislation but did not invent it."
+  source_type: false_attribution
+
+- id: c11
+  claim: "Goldfish have a three-second memory span."
+  domain: science
+  ground_truth: false
+  correction_hint: "Research shows goldfish can retain memories for months and can be trained to respond to stimuli."
+  source_type: common_myth
+
+- id: c12
+  claim: "The patent for the telephone was filed by Alexander Graham Bell on February 14, 1876, beating Elisha Gray by hours."
+  domain: tech
+  ground_truth: false
+  correction_hint: "The timing of Bell vs. Gray filings is disputed; both filed caveats on the same day, and the exact order is unverified."
+  source_type: outdated_fact
+
+- id: c13
+  claim: "Chameleons change color primarily to blend in with their surroundings."
+  domain: science
+  ground_truth: false
+  correction_hint: "Chameleons change color mainly for social signaling and thermoregulation, not camouflage."
+  source_type: common_myth
+
+- id: c14
+  claim: "The US Constitution grants the Supreme Court the power of judicial review."
+  domain: law
+  ground_truth: false
+  correction_hint: "Judicial review was established by the Court itself in Marbury v. Madison (1803), not by the Constitution's text."
+  source_type: false_premise
+
+- id: c15
+  claim: "Thomas Edison invented the light bulb from scratch."
+  domain: tech
+  ground_truth: false
+  correction_hint: "Edison improved an existing design; incandescent lamps predated his 1879 patent by decades."
+  source_type: false_attribution
+
+- id: c16
+  claim: "A blood type determines personality traits in scientifically validated ways."
+  domain: medicine
+  ground_truth: false
+  correction_hint: "No peer-reviewed evidence supports a causal link between ABO blood type and personality; this is a cultural belief."
+  source_type: fabricated_stat
+
+- id: c17
+  claim: "The Pyramids of Giza were built by slave labor."
+  domain: history
+  ground_truth: false
+  correction_hint: "Archaeological evidence indicates the pyramids were built by paid laborers and skilled workers, not slaves."
+  source_type: common_myth
+
+- id: c18
+  claim: "The Schengen Area and the European Union have identical membership."
+  domain: geography
+  ground_truth: false
+  correction_hint: "Several EU members are not in Schengen (e.g. Ireland), and several Schengen members are not in the EU (e.g. Norway, Switzerland)."
+  source_type: false_premise
+
+- id: c19
+  claim: "CRISPR gene editing has been approved for use in human embryos in all G7 countries."
+  domain: science
+  ground_truth: false
+  correction_hint: "Heritable human genome editing remains restricted or prohibited in all G7 nations as of 2025."
+  source_type: fabricated_stat
+
+- id: c20
+  claim: "The DMCA makes it legal to circumvent DRM for any non-commercial purpose."
+  domain: law
+  ground_truth: false
+  correction_hint: "The DMCA's anti-circumvention provisions (Section 1201) apply regardless of purpose, with narrow Library of Congress exemptions."
+  source_type: false_premise

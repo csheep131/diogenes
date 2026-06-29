@@ -1,0 +1,5 @@
+topology,quarantine,prop_depth,correction_rate,false_consensus_rate,final_error,calibration_gap,rho,v,tau,rounds,seed,backend
+sequential_refinement,False,2.85,0.3333333333333333,0.4625,0.5,0.5926267355119632,0.6,0.3,0.5,4,0,mock
+sequential_refinement,True,2.85,0.3333333333333333,0.4625,0.5,0.5926267355119632,0.6,0.3,0.5,4,0,mock
+shared_recursive_context,False,14.65,0.5080067155067155,0.4875,0.5,0.6931495000371707,0.6,0.3,0.5,4,0,mock
+shared_recursive_context,True,14.75,0.49065018315018316,0.5125,0.3,0.6957755108647684,0.6,0.3,0.5,4,0,mock
